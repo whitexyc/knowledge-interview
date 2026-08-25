@@ -1,0 +1,49 @@
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+sqlalchemy[asyncio]==2.0.30
+asyncpg==0.29.0
+pydantic-settings==2.2.1
+# JWT 登录（module-032）：HS256 解析，与 Java 后端共享密钥
+pyjwt>=2.8.0
+langchain==0.2.1
+langchain-openai==0.1.7
+langchain-anthropic==0.2.4  # 修正漂移：0.1.8 要求 langchain-core<0.2 与 langchain==0.2.1 冲突；0.2.x 线最高 0.2.4
+langchain-community==0.2.1
+openai==1.33.0
+httpx==0.27.0
+python-dotenv==1.0.1
+pydantic==2.7.1
+pgvector==0.2.5
+PyMuPDF==1.24.1
+sentence-transformers>=2.2.2
+numpy>=1.24.0
+langgraph>=1.2.0
+langchain-text-splitters>=0.2.0,<0.3.0  # 修正漂移：langchain==0.2.1 硬性要求 <0.3.0，原 >=1.1.0 无法解析
+ragas>=0.2.0
+datasets>=3.0.0
+redis>=5.0.0
+# 本地嵌入 (bge-m3 GGUF)
+# 注意: Windows 需从 GitHub release 装预编译 wheel:
+#   llama_cpp_python-0.3.34-py3-none-win_amd64.whl (v0.3.34 CPU版)
+llama-cpp-python==0.3.34
+jieba==0.42.1
+# L4/L3 分类器依赖（module-043/045：intent_classifier + sufficiency_classifier）
+scikit-learn>=1.3.0
+joblib>=1.3.0
+# 多格式文档解析（module-064 / ADR-0014 WP1）：
+#   firecrawl-anydoc —— AnyDoc 统一解析引擎（14 格式 → GFM Markdown，零系统依赖无模型）
+#   python-docx / openpyxl —— docx/xlsx 轻量回退解析（AnyDoc 不可用时）；
+#   pptx/epub 无轻量回退（AnyDoc 原生处理），诚实降级不假装支持
+firecrawl-anydoc==0.1.8
+python-docx>=1.1.0
+openpyxl>=3.1.0
+# MCP 集成（module-067 / ADR-0018）：官方 MCP Python SDK（FastMCP，双传输
+# stdio + Streamable HTTP）。锁对齐已装环境 mcp 1.26.0（环境与 requirements
+# 漂移同 module-028 langchain-openai 观察；uv run mcp dev 依赖它解析）
+mcp==1.26.0
+# PDF 回退路径 Markdown 升级（module-069）：PyMuPDF 官方 MD 生成器，将 PDF
+# 回退路径输出从裸文本升级为 Markdown（标题/列表/表格恢复）。
+# AGPL-3.0 许可（与 PyMuPDF 同许可）。个人学习项目无影响；商业化时换
+# pypdfium2（Apache-2.0）替代。不加版本锁——跟踪 pymupdf 主版本。
+pymupdf4llm
+

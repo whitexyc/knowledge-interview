@@ -1,0 +1,778 @@
+[
+  {
+    "question": "什么是G1垃圾收集器？它的核心创新是什么？",
+    "golden_docs": [
+      "1-G1垃圾收集器的Region分区机制与MixedGC全流程_2026-07-11"
+    ],
+    "category": "java_gc"
+  },
+  {
+    "question": "CMS收集器和G1收集器的主要区别是什么？",
+    "golden_docs": [
+      "1-G1垃圾收集器的Region分区机制与MixedGC全流程_2026-07-11"
+    ],
+    "category": "java_gc"
+  },
+  {
+    "question": "ZGC的特点和适用场景是什么？",
+    "golden_docs": [
+      "1-G1垃圾收集器的Region分区机制与MixedGC全流程_2026-07-11"
+    ],
+    "category": "java_gc"
+  },
+  {
+    "question": "Java对象什么时候会进入老年代？",
+    "golden_docs": [
+      "1-G1垃圾收集器的Region分区机制与MixedGC全流程_2026-07-11"
+    ],
+    "category": "java_gc"
+  },
+  {
+    "question": "什么情况下会触发Full GC？如何优化以减少Full GC？",
+    "golden_docs": [
+      "1-G1垃圾收集器的Region分区机制与MixedGC全流程_2026-07-11"
+    ],
+    "category": "java_gc"
+  },
+  {
+    "question": "Java线程池的核心参数有哪些？各自的作用是什么？",
+    "golden_docs": [
+      "6-Java线程池ThreadPoolExecutor核心参数与工作原理_2026-07-16"
+    ],
+    "category": "java_concurrency"
+  },
+  {
+    "question": "volatile关键字的作用和实现原理是什么？",
+    "golden_docs": [
+      "16-volatile与Java内存模型JMM_2026-07-27"
+    ],
+    "category": "java_concurrency"
+  },
+  {
+    "question": "synchronized的底层实现原理是什么？锁升级过程是怎样的？",
+    "golden_docs": [
+      "12-HashMap与ConcurrentHashMap底层原理_2026-07-23",
+      "15-AQS抽象队列同步器与ReentrantLock实现原理_2026-07-26"
+    ],
+    "category": "java_concurrency"
+  },
+  {
+    "question": "AQS (AbstractQueuedSynchronizer) 的工作原理是什么？ReentrantLock如何基于AQS实现？",
+    "golden_docs": [
+      "15-AQS抽象队列同步器与ReentrantLock实现原理_2026-07-26"
+    ],
+    "category": "java_concurrency"
+  },
+  {
+    "question": "CompletableFuture和Future有什么区别？如何使用CompletableFuture进行异步编排？",
+    "golden_docs": [
+      "6-Java线程池ThreadPoolExecutor核心参数与工作原理_2026-07-16"
+    ],
+    "category": "java_concurrency"
+  },
+  {
+    "question": "Transformer模型的Self-Attention机制是如何工作的？",
+    "golden_docs": [
+      "4-RoPE旋转位置编码_2026-07-14",
+      "11-归一化与稳定训练_2026-07-22"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "什么是MoE (Mixture of Experts)架构？它的优势和挑战是什么？",
+    "golden_docs": [
+      "6-MoE混合专家模型_2026-07-16"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "LoRA (Low-Rank Adaptation)微调的原理是什么？",
+    "golden_docs": [
+      "5-LoRA低秩适配微调_2026-07-15"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "LLM中的KV Cache是什么？为什么能加速推理？",
+    "golden_docs": [
+      "7-KVCache与注意力优化_2026-07-17"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "RAG (Retrieval-Augmented Generation)的核心流程是怎样的？与传统LLM生成有什么优势？",
+    "golden_docs": [
+      "2-AdvancedRAG全链路_2026-07-12"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "Kafka的Partition机制有什么作用？如何保证消息顺序性？",
+    "golden_docs": [
+      "5-Kafka消息可靠性与高吞吐设计_2026-07-15"
+    ],
+    "category": "kafka"
+  },
+  {
+    "question": "Kafka Consumer Group的Rebalance机制是什么？有哪些Rebalance策略？",
+    "golden_docs": [
+      "5-Kafka消息可靠性与高吞吐设计_2026-07-15"
+    ],
+    "category": "kafka"
+  },
+  {
+    "question": "Kafka如何实现Exactly-Once语义？",
+    "golden_docs": [
+      "5-Kafka消息可靠性与高吞吐设计_2026-07-15"
+    ],
+    "category": "kafka"
+  },
+  {
+    "question": "Kafka的零拷贝(Zero-Copy)技术是如何实现的？",
+    "golden_docs": [
+      "5-Kafka消息可靠性与高吞吐设计_2026-07-15",
+      "7-Netty高性能IO与Reactor线程模型_2026-07-17"
+    ],
+    "category": "kafka"
+  },
+  {
+    "question": "Kafka相比其他消息队列（如RabbitMQ）的核心优势是什么？",
+    "golden_docs": [
+      "5-Kafka消息可靠性与高吞吐设计_2026-07-15"
+    ],
+    "category": "kafka"
+  },
+  {
+    "question": "熊艺诚的主要技术方向是什么？",
+    "golden_docs": [],
+    "category": "resume"
+  },
+  {
+    "question": "熊艺诚参加过哪些比赛？获得过什么奖项？",
+    "golden_docs": [],
+    "category": "resume"
+  },
+  {
+    "question": "熊艺诚在校期间的学习情况如何？主修课程有哪些？",
+    "golden_docs": [],
+    "category": "resume"
+  },
+  {
+    "question": "熊艺诚最近在学习和研究什么技术？",
+    "golden_docs": [],
+    "category": "resume"
+  },
+  {
+    "question": "熊艺诚的个人网站项目包含哪些技术栈？",
+    "golden_docs": [],
+    "category": "resume"
+  },
+  {
+    "question": "什么是CAP定理？在分布式系统设计中如何权衡？",
+    "golden_docs": [
+      "8-Spring-Cloud-Nacos服务注册发现与配置中心_2026-07-18"
+    ],
+    "category": "comprehensive"
+  },
+  {
+    "question": "HTTP/2相比HTTP/1.1有什么核心改进？",
+    "golden_docs": [],
+    "category": "comprehensive"
+  },
+  {
+    "question": "Redis的持久化方式RDB和AOF有什么区别？如何选择？",
+    "golden_docs": [
+      "10-Redis持久化机制_2026-07-20"
+    ],
+    "category": "comprehensive"
+  },
+  {
+    "question": "什么是微服务架构？与单体架构相比有哪些优缺点？",
+    "golden_docs": [
+      "8-Spring-Cloud-Nacos服务注册发现与配置中心_2026-07-18",
+      "9-分布式事务-Seata-AT模式与TCC方案深度对比_2026-07-19"
+    ],
+    "category": "comprehensive"
+  },
+  {
+    "question": "Docker和虚拟机的核心区别是什么？容器化有什么优势？",
+    "golden_docs": [],
+    "category": "comprehensive"
+  },
+  {
+    "question": "G1 垃圾收集器中的 RSet（Remembered Set）是做什么的？为什么需要它？",
+    "golden_docs": [
+      "1-G1垃圾收集器的Region分区机制与MixedGC全流程_2026-07-11"
+    ],
+    "category": "java_gc"
+  },
+  {
+    "question": "G1 的 MixedGC 是在什么阶段触发的？回收哪些区域？",
+    "golden_docs": [
+      "1-G1垃圾收集器的Region分区机制与MixedGC全流程_2026-07-11"
+    ],
+    "category": "java_gc"
+  },
+  {
+    "question": "G1 的停顿时间预测是怎么实现的？MaxGCPauseMillis 参数如何生效？",
+    "golden_docs": [
+      "1-G1垃圾收集器的Region分区机制与MixedGC全流程_2026-07-11"
+    ],
+    "category": "java_gc"
+  },
+  {
+    "question": "G1 中 Humongous 大对象是怎么分配的？频繁分配会有什么影响？",
+    "golden_docs": [
+      "1-G1垃圾收集器的Region分区机制与MixedGC全流程_2026-07-11"
+    ],
+    "category": "java_gc"
+  },
+  {
+    "question": "Java 线程池的四种拒绝策略分别是什么？分别适用于什么场景？",
+    "golden_docs": [
+      "6-Java线程池ThreadPoolExecutor核心参数与工作原理_2026-07-16"
+    ],
+    "category": "java_concurrency"
+  },
+  {
+    "question": "线程池的任务队列应该怎么选？有界队列和无界队列各自的风险是什么？",
+    "golden_docs": [
+      "6-Java线程池ThreadPoolExecutor核心参数与工作原理_2026-07-16"
+    ],
+    "category": "java_concurrency"
+  },
+  {
+    "question": "线程池的核心线程会被回收吗？allowCoreThreadTimeOut 的作用是什么？",
+    "golden_docs": [
+      "6-Java线程池ThreadPoolExecutor核心参数与工作原理_2026-07-16"
+    ],
+    "category": "java_concurrency"
+  },
+  {
+    "question": "ReentrantLock 的公平锁和非公平锁实现有什么区别？",
+    "golden_docs": [
+      "15-AQS抽象队列同步器与ReentrantLock实现原理_2026-07-26"
+    ],
+    "category": "java_concurrency"
+  },
+  {
+    "question": "Condition 的 await 和 signal 是怎么实现的？和 Object 的 wait/notify 有什么区别？",
+    "golden_docs": [
+      "15-AQS抽象队列同步器与ReentrantLock实现原理_2026-07-26"
+    ],
+    "category": "java_concurrency"
+  },
+  {
+    "question": "ConcurrentHashMap 在 JDK 8 中是怎么保证线程安全的？",
+    "golden_docs": [
+      "12-HashMap与ConcurrentHashMap底层原理_2026-07-23"
+    ],
+    "category": "java_concurrency"
+  },
+  {
+    "question": "ConcurrentHashMap 的扩容是怎么做的？为什么不用分段锁了？",
+    "golden_docs": [
+      "12-HashMap与ConcurrentHashMap底层原理_2026-07-23"
+    ],
+    "category": "java_concurrency"
+  },
+  {
+    "question": "JMM 中 happens-before 规则有哪些？volatile 的写读是什么关系？",
+    "golden_docs": [
+      "16-volatile与Java内存模型JMM_2026-07-27"
+    ],
+    "category": "java_concurrency"
+  },
+  {
+    "question": "双亲委派模型的加载流程是怎样的？为什么需要它？",
+    "golden_docs": [
+      "18-JVM类加载机制与双亲委派模型_2026-07-29"
+    ],
+    "category": "jvm"
+  },
+  {
+    "question": "什么情况下需要打破双亲委派模型？常见的打破方式有哪些？",
+    "golden_docs": [
+      "18-JVM类加载机制与双亲委派模型_2026-07-29"
+    ],
+    "category": "jvm"
+  },
+  {
+    "question": "类加载过程分为哪几个阶段？初始化阶段做了什么？",
+    "golden_docs": [
+      "18-JVM类加载机制与双亲委派模型_2026-07-29"
+    ],
+    "category": "jvm"
+  },
+  {
+    "question": "Spring 的 IoC 容器是怎么管理 Bean 生命周期的？",
+    "golden_docs": [
+      "17-Spring-IoC控制反转与AOP面向切面编程底层原理_2026-07-28"
+    ],
+    "category": "spring"
+  },
+  {
+    "question": "Spring AOP 的 JDK 动态代理和 CGLIB 代理有什么区别？怎么选择？",
+    "golden_docs": [
+      "17-Spring-IoC控制反转与AOP面向切面编程底层原理_2026-07-28"
+    ],
+    "category": "spring"
+  },
+  {
+    "question": "Spring 是怎么解决循环依赖的？三级缓存是什么？",
+    "golden_docs": [
+      "17-Spring-IoC控制反转与AOP面向切面编程底层原理_2026-07-28"
+    ],
+    "category": "spring"
+  },
+  {
+    "question": "MyBatis 的一级缓存和二级缓存有什么区别？",
+    "golden_docs": [
+      "19-MyBatis核心原理与缓存机制_2026-07-29"
+    ],
+    "category": "spring"
+  },
+  {
+    "question": "MyBatis 的 Mapper 接口是怎么工作的？为什么没有实现类也能调用？",
+    "golden_docs": [
+      "19-MyBatis核心原理与缓存机制_2026-07-29"
+    ],
+    "category": "spring"
+  },
+  {
+    "question": "InnoDB 的聚簇索引和二级索引有什么区别？回表是什么？",
+    "golden_docs": [
+      "4-MySQL-InnoDB索引与B+树_2026-07-14"
+    ],
+    "category": "mysql"
+  },
+  {
+    "question": "什么是覆盖索引？为什么能避免回表？",
+    "golden_docs": [
+      "4-MySQL-InnoDB索引与B+树_2026-07-14"
+    ],
+    "category": "mysql"
+  },
+  {
+    "question": "联合索引的最左前缀原则是什么？",
+    "golden_docs": [
+      "4-MySQL-InnoDB索引与B+树_2026-07-14"
+    ],
+    "category": "mysql"
+  },
+  {
+    "question": "MVCC 是怎么实现快照读的？undo log 在里面的作用是什么？",
+    "golden_docs": [
+      "3-MySQL-InnoDB事务隔离级别与锁机制_2026-07-13"
+    ],
+    "category": "mysql"
+  },
+  {
+    "question": "InnoDB 的间隙锁（Gap Lock）是什么？解决什么问题？",
+    "golden_docs": [
+      "3-MySQL-InnoDB事务隔离级别与锁机制_2026-07-13"
+    ],
+    "category": "mysql"
+  },
+  {
+    "question": "redo log 和 binlog 有什么区别？两阶段提交是什么？",
+    "golden_docs": [
+      "13-MySQL-InnoDB事务日志体系与崩溃恢复_2026-07-24"
+    ],
+    "category": "mysql"
+  },
+  {
+    "question": "MySQL 崩溃恢复是怎么用 redo log 和 undo log 实现的？",
+    "golden_docs": [
+      "13-MySQL-InnoDB事务日志体系与崩溃恢复_2026-07-24"
+    ],
+    "category": "mysql"
+  },
+  {
+    "question": "Redis 的 AOF 重写是怎么做的？为什么需要重写？",
+    "golden_docs": [
+      "10-Redis持久化机制_2026-07-20"
+    ],
+    "category": "redis"
+  },
+  {
+    "question": "Redis 混合持久化是什么？怎么配置？",
+    "golden_docs": [
+      "10-Redis持久化机制_2026-07-20"
+    ],
+    "category": "redis"
+  },
+  {
+    "question": "缓存穿透、击穿、雪崩各自怎么解决？布隆过滤器用在哪？",
+    "golden_docs": [
+      "2-Redis缓存穿透击穿雪崩_2026-07-12"
+    ],
+    "category": "redis"
+  },
+  {
+    "question": "缓存和数据库的一致性问题怎么解决？Cache Aside 模式是什么？",
+    "golden_docs": [
+      "2-Redis缓存穿透击穿雪崩_2026-07-12"
+    ],
+    "category": "redis"
+  },
+  {
+    "question": "Nacos 作为注册中心时服务实例是怎么注册和发现的？",
+    "golden_docs": [
+      "8-Spring-Cloud-Nacos服务注册发现与配置中心_2026-07-18"
+    ],
+    "category": "distributed"
+  },
+  {
+    "question": "Nacos 配置中心的动态刷新原理是什么？",
+    "golden_docs": [
+      "8-Spring-Cloud-Nacos服务注册发现与配置中心_2026-07-18"
+    ],
+    "category": "distributed"
+  },
+  {
+    "question": "一致性哈希算法是怎么解决哈希取模的扩容问题的？",
+    "golden_docs": [
+      "26-一致性哈希算法与分布式数据分片_2026-08-04"
+    ],
+    "category": "distributed"
+  },
+  {
+    "question": "一致性哈希的虚拟节点有什么用？",
+    "golden_docs": [
+      "26-一致性哈希算法与分布式数据分片_2026-08-04"
+    ],
+    "category": "distributed"
+  },
+  {
+    "question": "分布式数据分片有哪些常见策略？",
+    "golden_docs": [
+      "26-一致性哈希算法与分布式数据分片_2026-08-04"
+    ],
+    "category": "distributed"
+  },
+  {
+    "question": "ZooKeeper 的 Leader 选举是怎么实现的？ZAB 协议是什么？",
+    "golden_docs": [
+      "20-ZooKeeper分布式协调与选举机制_2026-07-30"
+    ],
+    "category": "distributed"
+  },
+  {
+    "question": "ZooKeeper 的应用场景有哪些？分布式锁怎么用 ZK 实现？",
+    "golden_docs": [
+      "20-ZooKeeper分布式协调与选举机制_2026-07-30"
+    ],
+    "category": "distributed"
+  },
+  {
+    "question": "雪花算法生成的 ID 由哪几部分组成？",
+    "golden_docs": [
+      "14-分布式ID生成方案-Snowflake雪花算法与美团Leaf_2026-07-25"
+    ],
+    "category": "distributed"
+  },
+  {
+    "question": "雪花算法的时钟回拨问题怎么解决？",
+    "golden_docs": [
+      "14-分布式ID生成方案-Snowflake雪花算法与美团Leaf_2026-07-25"
+    ],
+    "category": "distributed"
+  },
+  {
+    "question": "美团 Leaf 的号段模式和雪花模式有什么区别？",
+    "golden_docs": [
+      "14-分布式ID生成方案-Snowflake雪花算法与美团Leaf_2026-07-25"
+    ],
+    "category": "distributed"
+  },
+  {
+    "question": "Seata 的 AT 模式是怎么实现分布式事务的？",
+    "golden_docs": [
+      "9-分布式事务-Seata-AT模式与TCC方案深度对比_2026-07-19"
+    ],
+    "category": "distributed"
+  },
+  {
+    "question": "Seata 的 TCC 模式和 AT 模式有什么区别？",
+    "golden_docs": [
+      "9-分布式事务-Seata-AT模式与TCC方案深度对比_2026-07-19"
+    ],
+    "category": "distributed"
+  },
+  {
+    "question": "Seata 的 TC/TM/RM 三个角色是怎么协作的？",
+    "golden_docs": [
+      "9-分布式事务-Seata-AT模式与TCC方案深度对比_2026-07-19"
+    ],
+    "category": "distributed"
+  },
+  {
+    "question": "Sentinel 的限流和熔断原理是什么？",
+    "golden_docs": [
+      "22-SpringCloudGateway路由网关与Sentinel限流熔断_2026-07-31"
+    ],
+    "category": "distributed"
+  },
+  {
+    "question": "Spring Cloud Gateway 的路由和过滤器是怎么工作的？",
+    "golden_docs": [
+      "22-SpringCloudGateway路由网关与Sentinel限流熔断_2026-07-31"
+    ],
+    "category": "distributed"
+  },
+  {
+    "question": "Kafka 的 ISR 机制是怎么保证消息可靠性的？",
+    "golden_docs": [
+      "5-Kafka消息可靠性与高吞吐设计_2026-07-15"
+    ],
+    "category": "kafka"
+  },
+  {
+    "question": "Kafka 为什么吞吐量高？零拷贝是怎么实现的？",
+    "golden_docs": [
+      "5-Kafka消息可靠性与高吞吐设计_2026-07-15",
+      "7-Netty高性能IO与Reactor线程模型_2026-07-17"
+    ],
+    "category": "kafka"
+  },
+  {
+    "question": "Kafka 的 offset 是怎么提交的？手动提交和自动提交的区别？",
+    "golden_docs": [
+      "5-Kafka消息可靠性与高吞吐设计_2026-07-15"
+    ],
+    "category": "kafka"
+  },
+  {
+    "question": "RocketMQ 的事务消息是怎么实现的？",
+    "golden_docs": [
+      "11-RocketMQ核心架构与事务消息实现原理_2026-07-22"
+    ],
+    "category": "mq"
+  },
+  {
+    "question": "RocketMQ 的 NameServer 和 Broker 是怎么协作的？",
+    "golden_docs": [
+      "11-RocketMQ核心架构与事务消息实现原理_2026-07-22"
+    ],
+    "category": "mq"
+  },
+  {
+    "question": "RocketMQ 和 Kafka 的选型怎么考虑？",
+    "golden_docs": [
+      "11-RocketMQ核心架构与事务消息实现原理_2026-07-22"
+    ],
+    "category": "mq"
+  },
+  {
+    "question": "Netty 的粘包和拆包问题怎么解决？有哪些解码器？",
+    "golden_docs": [
+      "7-Netty高性能IO与Reactor线程模型_2026-07-17"
+    ],
+    "category": "netty"
+  },
+  {
+    "question": "Netty 的零拷贝是怎么实现的？和 Kafka 的零拷贝有什么异同？",
+    "golden_docs": [
+      "7-Netty高性能IO与Reactor线程模型_2026-07-17",
+      "5-Kafka消息可靠性与高吞吐设计_2026-07-15"
+    ],
+    "category": "netty"
+  },
+  {
+    "question": "TCP 四次挥手为什么要有 TIME_WAIT 状态？",
+    "golden_docs": [
+      "23-TCP三次握手四次挥手与TCP状态机_2026-08-01"
+    ],
+    "category": "network"
+  },
+  {
+    "question": "TCP 三次握手可以携带数据吗？为什么？",
+    "golden_docs": [
+      "23-TCP三次握手四次挥手与TCP状态机_2026-08-01"
+    ],
+    "category": "network"
+  },
+  {
+    "question": "SYN 洪水攻击是怎么发生的？怎么防御？",
+    "golden_docs": [
+      "23-TCP三次握手四次挥手与TCP状态机_2026-08-01"
+    ],
+    "category": "network"
+  },
+  {
+    "question": "HTTPS 的 TLS 握手流程是怎样的？",
+    "golden_docs": [
+      "25-HTTPS-TLS握手全流程与加密体系_2026-08-03"
+    ],
+    "category": "network"
+  },
+  {
+    "question": "TLS 证书的信任链是怎么验证的？",
+    "golden_docs": [
+      "25-HTTPS-TLS握手全流程与加密体系_2026-08-03"
+    ],
+    "category": "network"
+  },
+  {
+    "question": "推测解码（Speculative Decoding）的原理是什么？",
+    "golden_docs": [
+      "1-推测解码_2026-07-11"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "大模型的长上下文是怎么扩展的？有哪些方法？",
+    "golden_docs": [
+      "10-长上下文扩展_2026-07-20"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "LayerNorm 和 BatchNorm 有什么区别？Transformer 为什么用 LayerNorm？",
+    "golden_docs": [
+      "11-归一化与稳定训练_2026-07-22"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "DPO 和 RLHF 有什么区别？",
+    "golden_docs": [
+      "3-DPO直接偏好优化_2026-07-13"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "GPTQ 和 AWQ 量化的原理是什么？",
+    "golden_docs": [
+      "8-大模型量化与低精度推理_2026-07-18"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "vLLM 的 PagedAttention 解决了什么问题？",
+    "golden_docs": [
+      "16-vLLM与PagedAttention_2026-07-27"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "ZeRO 的三个阶段分别优化了什么？",
+    "golden_docs": [
+      "12-分布式训练与ZeRO优化_2026-07-23"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "预训练数据是怎么清洗和处理的？",
+    "golden_docs": [
+      "13-预训练与数据工程_2026-07-24"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "多模态大模型的视觉指令微调是怎么做的？",
+    "golden_docs": [
+      "15-多模态大模型与视觉指令微调_2026-07-26"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "大模型评估有哪些常用指标？",
+    "golden_docs": [
+      "14-评估与评测_2026-07-25"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "CoT 思维链提示是怎么提升推理能力的？",
+    "golden_docs": [
+      "18-CoT思维链推理_2026-07-29"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "Reflexion 反思机制是怎么工作的？",
+    "golden_docs": [
+      "20-反思机制Reflexion_2026-07-31"
+    ],
+    "category": "ai_llm"
+  },
+  {
+    "question": "Agent 是怎么调用工具的？function calling 流程是什么？",
+    "golden_docs": [
+      "9-Agent与工具调用_2026-07-19"
+    ],
+    "category": "agent"
+  },
+  {
+    "question": "MCP 模型上下文协议解决了什么问题？",
+    "golden_docs": [
+      "25-MCP模型上下文协议_2026-08-04"
+    ],
+    "category": "agent"
+  },
+  {
+    "question": "Agent 的记忆系统有哪些类型？怎么管理？",
+    "golden_docs": [
+      "19-Agent记忆管理_2026-07-30"
+    ],
+    "category": "agent"
+  },
+  {
+    "question": "Agent 的任务规划有哪些策略？",
+    "golden_docs": [
+      "22-Agent规划策略与任务分解_2026-08-01"
+    ],
+    "category": "agent"
+  },
+  {
+    "question": "Agent 的安全和护栏有哪些？",
+    "golden_docs": [
+      "23-Agent安全与护栏_2026-08-02"
+    ],
+    "category": "agent"
+  },
+  {
+    "question": "Agentic RAG 和传统 RAG 的区别是什么？",
+    "golden_docs": [
+      "24-AgenticRAG_2026-08-03"
+    ],
+    "category": "agent"
+  },
+  {
+    "question": "Agent 评估怎么做？有哪些指标？",
+    "golden_docs": [
+      "21-Agent评估与评测_2026-07-31"
+    ],
+    "category": "agent"
+  },
+  {
+    "question": "Elasticsearch 的倒排索引是怎么工作的？",
+    "golden_docs": [
+      "21-Elasticsearch倒排索引原理与分布式搜索架构_2026-07-31"
+    ],
+    "category": "elasticsearch"
+  },
+  {
+    "question": "ES 的分片（shard）是怎么工作的？",
+    "golden_docs": [
+      "21-Elasticsearch倒排索引原理与分布式搜索架构_2026-07-31"
+    ],
+    "category": "elasticsearch"
+  },
+  {
+    "question": "单例模式的五种实现方式有哪些？DCL 为什么需要 volatile？",
+    "golden_docs": [
+      "24-设计模式单例模式五种实现与DCL底层原理_2026-08-02"
+    ],
+    "category": "design_pattern"
+  },
+  {
+    "question": "单例模式和静态类的区别是什么？",
+    "golden_docs": [
+      "24-设计模式单例模式五种实现与DCL底层原理_2026-08-02"
+    ],
+    "category": "design_pattern"
+  }
+]

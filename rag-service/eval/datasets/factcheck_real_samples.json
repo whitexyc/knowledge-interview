@@ -1,0 +1,393 @@
+{
+  "meta": {
+    "num": 32,
+    "note": "module-071 factcheck 真实 claim 样本：24 条来自 real_retrieval_pairs.json（claim=deepseek-v4-flash 真实答案句子，doc=DB golden 112 题 hybrid 检索 top 片段，verdict 人工标注）按 to_factcheck_item 口径转换（entailment→supported / neutral→inferred / contradiction→unsupported）+ 8 条新构造 inferred 样本。inferred 标注口径（factcheck_annotation_guide.md）：至少一个核心断言被文档支持 + 至少一个未被覆盖且无冲突。module-071 口径复核：3 条原 neutral（熊艺诚技术方向/熊艺诚技术栈/微服务架构）文档与 claim 无任何核心断言对应 → 改判 unsupported。",
+    "generated_at": "2026-08-18"
+  },
+  "samples": [
+    {
+      "question": "什么是G1垃圾收集器？它的核心创新是什么？",
+      "documents": [{
+        "title": "1-G1垃圾收集器的Region分区机制与MixedGC全流程_2026-07-11 > 前置知识：什么是 GC？什么是 G1？ > 四、什么是 G1",
+        "content": "**G1（Garbage-First，/ˈɡɑːrbɪdʒ fɜːrst/，垃圾优先收集器）** 是 JDK 9 起的默认垃圾收集器，是当前生产环境覆盖率最高的 GC 方案。\n**名字由来**：\"Garbage-First\"意思是\"优先回收垃圾最多的区域\"。传统收集器每次回收整个代（全新生代或全老年代），G1 则会选择当前垃圾占比最高的几个 Region 来回收——在有限停顿时间内做到\"收益最大化\"。"
+      }],
+      "label": "supported",
+      "keywords": ["G1", "Region"],
+      "category": "java_gc",
+      "note": "claim 核心断言（JDK9 起默认、优先回收垃圾最多的 Region）与 doc 一致，全部被支持",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "什么情况下会触发Full GC？如何优化以减少Full GC？",
+      "documents": [{
+        "title": "1-G1垃圾收集器的Region分区机制与MixedGC全流程_2026-07-11 > 板块4：【项目落地硬货】 > 1. 具体调参起始参考值",
+        "content": "- 禁用显式 GC：`-XX:+DisableExplicitGC`。防止第三方库调用 System.gc() 触发 Full GC。"
+      }],
+      "label": "inferred",
+      "keywords": ["System.gc"],
+      "category": "java_gc",
+      "note": "核心断言拆解：(a) Full GC 触发条件（老年代/元空间不足、System.gc）(b) 优化手段。doc 直接支持 (a) 的 System.gc 触发子断言（DisableExplicitGC 防显式 GC）；老年代/元空间与优化手段部分未覆盖且无冲突",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "AQS (AbstractQueuedSynchronizer) 的工作原理是什么？ReentrantLock如何基于AQS实现？",
+      "documents": [{
+        "title": "15-AQS抽象队列同步器与ReentrantLock实现原理_2026-07-26 > 板块1：【今日弹药库】 > 深度主粮",
+        "content": "**AQS（AbstractQueuedSynchronizer，抽象队列同步器）**\n> AQS → /ˈæbˌstrækt kjuːd ˈsɪŋkrənaɪzər/，中文一般读作\"阿布斯特拉克特-丘德-辛克罗奈泽\"，日常口语直接说\"A-Q-S\"即可。它是 Java 大神 Doug Lea 写的一套用来构建锁和同步器的基础框架，简单说就是：**你在 Java 里用到的几乎所有锁（ReentrantLock、Semaphore、CountDownLatch、ReentrantReadWriteLock、CyclicBarrier），底层都是基于 AQS 实现的**。"
+      }],
+      "label": "inferred",
+      "keywords": ["AQS"],
+      "category": "java_concurrency",
+      "note": "核心断言拆解：(a) AQS 工作原理（volatile state/CLH/CAS）(b) ReentrantLock 基于 AQS 实现。doc 直接支持 (b) 的\"锁都基于 AQS\"子断言；(a) 与重入计数部分未覆盖且无冲突",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "LoRA (Low-Rank Adaptation)微调的原理是什么？",
+      "documents": [{
+        "title": "5-LoRA低秩适配微调_2026-07-15 > 板块1：【今日弹药库】 > 深度主粮：LoRA 低秩适配微调（Low-Rank Adaptation）",
+        "content": "**一句话定性**：LoRA 是一种在**几乎不改动预训练大模型本体参数**的前提下，通过给每个目标权重矩阵外挂一对小型低秩矩阵，让模型快速学会下游任务的参数高效微调方法（Parameter-Efficient Fine-Tuning，PEFT，参数高效微调）。"
+      }],
+      "label": "supported",
+      "keywords": ["LoRA", "低秩矩阵"],
+      "category": "ai_llm",
+      "note": "claim 与 doc 一致：外挂低秩矩阵、几乎不改本体参数、参数高效微调，全部核心断言被支持",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "Kafka Consumer Group的Rebalance机制是什么？有哪些Rebalance策略？",
+      "documents": [{
+        "title": "11-RocketMQ核心架构与事务消息实现原理_2026-07-22 > 板块4：【项目落地硬货】 > 线上最容易炸的点",
+        "content": "- `REBALANCE` 频繁出现：说明 Consumer 实例在频繁上下线，可能是 K8s（Kubernetes，容器编排平台）Pod 漂移、JVM OOM 重启、网络抖动。Rebalance 期间整个 Consumer Group 会停止消费 3~10 秒。"
+      }],
+      "label": "inferred",
+      "keywords": ["Rebalance"],
+      "category": "kafka",
+      "note": "核心断言拆解：(a) Rebalance 触发机制（成员/分区变化自动重分配）(b) 策略分类（Eager/Cooperative/Range/RoundRobin/Sticky）。doc 直接支持 (a) 的触发场景子断言（实例上下线触发 + 消费停滞）；(b) 策略分类未覆盖且无冲突",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "候选人的主要技术方向是什么？",
+      "documents": [{
+        "title": "5-Kafka消息可靠性与高吞吐设计_2026-07-15 > 板块1：【今日弹药库】 > 选题理由",
+        "content": "。这两个方向加起来，在消息队列类面试题中占比超过 **60%**。"
+      }],
+      "label": "unsupported",
+      "keywords": ["候选人", "深度学习"],
+      "category": "resume",
+      "note": "module-071 口径复核改判：检索片段与 claim（技术方向）完全无关，不支撑任何核心断言（原 neutral，按\"部分覆盖需至少一个核心断言被支持\"改判 unsupported）",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "候选人的个人网站项目包含哪些技术栈？",
+      "documents": [{
+        "title": "18-JVM类加载机制与双亲委派模型_2026-07-29 > 板块6：【面试题与答案（每题附带追问解答+三层拆解）】 > 题目3",
+        "content": "**第二层：面试开口说（说给面试官听）**\n\"这题我们是真做过——之前做的营销规则引擎就是一个小型插件系统。我直接讲设计思路和踩过的坑。\n核心架构三层：最顶层是 JDK 的 Bootstrap 不动；中间加一个 Shared ClassLoader 放公共接口和 API 定义；最底层一个插件一个 ClassLoader。加载顺序上，插件 ClassLoader 是'先自己、后爹'，和 Tomcat 一样——为什么要反过来？因为如果先问爹，Shared 里有个旧版本的库，插件自己带的新版本就没机会加载了。"
+      }],
+      "label": "unsupported",
+      "keywords": ["Next.js", "React"],
+      "category": "resume",
+      "note": "module-071 口径复核改判：检索片段（类加载插件系统）与 claim（网站技术栈）完全无关，不支撑任何核心断言（原 neutral 改判 unsupported）",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "什么是微服务架构？与单体架构相比有哪些优缺点？",
+      "documents": [{
+        "title": "8-Spring-Cloud-Nacos服务注册发现与配置中心_2026-07-18 > 板块1：【今日弹药库】 > 深度主粮",
+        "content": "微服务架构是后端面试的\"保底题 + 拉分题\"。Nacos 作为 Spring Cloud Alibaba 生态的核心组件，在国内大厂面试中出现频率 > 70%，尤其是\"Nacos 和 Eureka 有什么区别\"\"配置变更怎么做到秒级生效\"\"AP 和 CP 怎么切换\"这三连问。补充说明：Eureka 是 Netflix 开源的服务注册中心，纯 AP 架构、没有配置中心能力；AP（可用性优先，允许短暂数据不一致）和 CP（一致性优先，牺牲部分可用性）是 CAP 定理中的两种取舍。"
+      }],
+      "label": "unsupported",
+      "keywords": ["单体架构", "优缺点"],
+      "category": "microservice",
+      "note": "module-071 口径复核改判：doc 仅提及\"微服务架构\"概念（面试地位）与 Nacos/AP-CP，不支撑 claim 的\"微服务定义\"与\"与单体对比优缺点\"任何核心断言（原 neutral 改判 unsupported）",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "G1 的停顿时间预测是怎么实现的？MaxGCPauseMillis 参数如何生效？",
+      "documents": [{
+        "title": "1-G1垃圾收集器的Region分区机制与MixedGC全流程_2026-07-11 > 板块3：【原理深水区】 > 第三步：核心参数/配置与运行机制",
+        "content": "| `-XX:MaxGCPauseMillis` | 200 (ms) | G1 的停顿时间目标 | 设为 50ms：每次回收 Region 数量减少，GC 频率上升 2-3 倍，吞吐量下降 10%-20%；设为 500ms：单次回收量大，GC 频率低，吞吐量提升但单次延迟高 |"
+      }],
+      "label": "inferred",
+      "keywords": ["MaxGCPauseMillis"],
+      "category": "java_gc",
+      "note": "核心断言拆解：(a) 停顿时间预测实现（历史统计增量式模型）(b) MaxGCPauseMillis 生效（软目标动态调整）。doc 直接支持 (b)（停顿目标 + 调 Region 数量的后果）；(a) 未覆盖且无冲突",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "线程池的核心线程会被回收吗？allowCoreThreadTimeOut 的作用是什么？",
+      "documents": [{
+        "title": "6-Java线程池ThreadPoolExecutor核心参数与工作原理_2026-07-16 > 板块3：【原理深水区】 > 第三步：核心配置参数有哪些？它们影响什么？",
+        "content": "**1. corePoolSize（核心线程数）**\n- **作用**：线程池常驻的线程数量。即使这些线程处于空闲状态，也不会被回收（除非 `allowCoreThreadTimeOut` 设为 true）。"
+      }],
+      "label": "supported",
+      "keywords": ["corePoolSize", "allowCoreThreadTimeOut"],
+      "category": "java_concurrency",
+      "note": "claim 与 doc 逐点一致（空闲不回收 + allowCoreThreadTimeOut 例外），全部核心断言被支持",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "ConcurrentHashMap 的扩容是怎么做的？为什么不用分段锁了？",
+      "documents": [{
+        "title": "12-HashMap与ConcurrentHashMap底层原理_2026-07-23 > **难度**：⭐️⭐️⭐️⭐️（4 星）",
+        "content": "**第二层：面试开口说（说给面试官听）**\n\"这个问题特别好，它背后其实是 Java 并发编程的一个经典演进故事。\n1.7 时代，ConcurrentHashMap 用的是分段锁——把整个 Map 切成 16 个 Segment，每个 Segment 里是一个小 HashMap，这小 HashMap 自己有一把 ReentrantLock。两个线程写不同的 Segment 可以并行，但写同一个 Segment 内的不同 key 也得排队。等于说，你的最大并发度只有 16。"
+      }],
+      "label": "inferred",
+      "keywords": ["分段锁"],
+      "category": "java_collection",
+      "note": "核心断言拆解：(a) 扩容怎么做（多线程迁移/ForwardingNode）(b) 为什么不用分段锁。doc 直接支持 (b) 的理由子断言（1.7 分段锁最大并发度只有 16）；(a) 未覆盖且无冲突",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "类加载过程分为哪几个阶段？初始化阶段做了什么？",
+      "documents": [{
+        "title": "18-JVM类加载机制与双亲委派模型_2026-07-29 > 板块6：【面试题与答案】 > 题目1",
+        "content": "**第一层：底层理解（背给自己听）**\n类加载的生命周期是 7 个阶段：加载→验证→准备→解析→初始化→使用→卸载。背后真正要理解的是**状态转移**。"
+      }],
+      "label": "unsupported",
+      "keywords": ["五个阶段"],
+      "category": "jvm",
+      "note": "claim 断言\"五个阶段\"与 doc 断言\"7 个阶段\"直接冲突（阶段数穷尽性陈述互斥，contradiction_annotation_guide 同口径）→ 映射 unsupported",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "MyBatis 的一级缓存和二级缓存有什么区别？",
+      "documents": [{
+        "title": "19-MyBatis核心原理与缓存机制_2026-07-29 > 板块6：【面试题与答案】 > 题目1",
+        "content": "二级缓存不一样。它是 namespace 级别的——同一个 Mapper 接口下的所有 SqlSession 共享。默认是关闭的，你得在 Mapper XML 里加 `<cache/>` 标签，而且实体类必须实现 Serializable，因为它默认通过序列化来深拷贝。"
+      }],
+      "label": "inferred",
+      "keywords": ["二级缓存"],
+      "category": "mybatis",
+      "note": "核心断言拆解：(a) 一级缓存（SqlSession 级别默认开启）(b) 二级缓存（namespace 级别可跨会话）。doc 直接支持 (b) 全部子断言；(a) 未覆盖且无冲突",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "联合索引的最左前缀原则是什么？",
+      "documents": [{
+        "title": "4-MySQL-InnoDB索引与B+树_2026-07-14 > 板块4：【项目落地硬货】 > 4.3 数据/流量准备阶段最易忽略的脏活",
+        "content": "#### 脏活 2：联合索引的列顺序\n- **坑**：联合索引 `(a, b, c)`，查询用 `WHERE b=1 AND c=2`，索引不生效（不满足最左前缀）。\n- **解决**：联合索引列顺序遵循\"ESR 原则\"——Equality（等值查询的列）放最前，Sort（排序用到的列）放中间，Range（范围查询的列）放最后。"
+      }],
+      "label": "supported",
+      "keywords": ["最左前缀", "联合索引"],
+      "category": "mysql",
+      "note": "claim 与 doc 一致（最左列开始、b=1 AND c=2 不生效），全部核心断言被支持",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "MySQL 崩溃恢复是怎么用 redo log 和 undo log 实现的？",
+      "documents": [{
+        "title": "3-MySQL-InnoDB事务隔离级别与锁机制_2026-07-13 > 板块6：【面试题与答案】 > 题目2",
+        "content": "- **追问：崩溃恢复时怎么保证数据不丢？**\n→ **答案**：MySQL 重启时先重做（redo）再回滚（undo）——先扫描 redo log，把已提交但数据页还没来得及刷盘的事务重新应用（前滚），再将崩溃时未提交的事务通过 undo log 回滚。核心原则：redo 保证已提交的不丢，undo 保证未提交的不脏。"
+      }],
+      "label": "supported",
+      "keywords": ["redo", "undo"],
+      "category": "mysql",
+      "note": "claim 与 doc 逐点一致（redo 前滚已提交、undo 回滚未提交），全部核心断言被支持",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "缓存和数据库的一致性问题怎么解决？Cache Aside 模式是什么？",
+      "documents": [{
+        "title": "12-HashMap与ConcurrentHashMap底层原理_2026-07-23 > **难度**：⭐️⭐️⭐️⭐️⭐️（5 星，P7 级场景设计开放题）",
+        "content": "- **追问：缓存与数据库的一致性问题怎么处理？**\n→ **答案**：普通读写场景用 Cache Aside 模式——读缓存未命中时查 DB 并回填，写操作先更新 DB 再删除缓存。可配合延迟双删（写后立即删一次，延迟 500ms 再删一次）减少并发读写窗口期的不一致概率。"
+      }],
+      "label": "supported",
+      "keywords": ["Cache Aside", "延迟双删"],
+      "category": "redis",
+      "note": "claim 与 doc 逐点一致（读回填、写先更 DB 再删缓存、延迟双删），全部核心断言被支持",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "一致性哈希的虚拟节点有什么用？",
+      "documents": [{
+        "title": "26-一致性哈希算法与分布式数据分片_2026-08-04 > 板块2：【场景引路】 > 引入它之后，系统发生了什么变化？",
+        "content": "用数据说话：迁移量从 80% 降到 20%，迁移窗口从 33 分钟缩到约 6 分钟，缓存命中率从\"一夜归零\"变成\"只损失 1/N\"（配合虚拟节点——一个物理节点在环上生成多个位置来摊平分布不均——还能进一步摊平），数据库从\"被打挂\"变成\"平稳承接\"。这就是一致性哈希的价值：**让节点增删对系统的影响从\"全局\"变成\"局部\"。**"
+      }],
+      "label": "supported",
+      "keywords": ["虚拟节点", "物理节点"],
+      "category": "distributed",
+      "note": "claim 与 doc 一致（物理节点在环上生成多个位置、摊平分布不均），全部核心断言被支持",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "雪花算法生成的 ID 由哪几部分组成？",
+      "documents": [{
+        "title": "14-分布式ID生成方案-Snowflake雪花算法与美团Leaf_2026-07-25 > 板块6：【面试题与答案】 > 题目 1",
+        "content": "**第二层：面试开口说（说给面试官听）**\n\"雪花算法的核心思想其实特别朴素——就是把一个 64 位的 Long 型整数切成四段，分别存时间戳、机器标识和自增序列号。\n最高位是符号位，永远是 0，保证 ID 是正数。接下来 41 位是时间戳……"
+      }],
+      "label": "unsupported",
+      "keywords": ["三部分组成"],
+      "category": "distributed",
+      "note": "claim 断言\"三部分组成\"与 doc 断言\"切成四段（含最高位符号位）\"直接冲突（段数穷尽性陈述互斥，contradiction_annotation_guide 同口径）→ 映射 unsupported",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "Seata 的 TCC 模式和 AT 模式有什么区别？",
+      "documents": [{
+        "title": "9-分布式事务-Seata-AT模式与TCC方案深度对比_2026-07-19 > 板块1：【今日弹药库】 > 深度主粮",
+        "content": "**Seata**（Simple Extensible Autonomous Transaction Architecture）是阿里开源的一套分布式事务中间件，本质是把\"跨库跨服务的一致性\"统一管起来；**AT 模式**（Automatic Transaction，自动事务分支模式）是其中\"无侵入自动补偿\"的一种实现——开发者只加一个注解，框架自动生成 undo_log 前/后镜像并在失败时反向补偿。"
+      }],
+      "label": "inferred",
+      "keywords": ["AT 模式"],
+      "category": "distributed",
+      "note": "核心断言拆解：(a) AT 模式（undo_log 无侵入自动补偿）(b) TCC 模式（Try/Confirm/Cancel 手动实现）。doc 直接支持 (a) 全部子断言；(b) 未覆盖且无冲突",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "Kafka 的 ISR 机制是怎么保证消息可靠性的？",
+      "documents": [{
+        "title": "5-Kafka消息可靠性与高吞吐设计_2026-07-15 > 板块6：【面试题与答案】 > 题目1：Kafka 的 ISR 机制是什么？",
+        "content": "**第二层：面试开口说（说给面试官听）**\n> 面试官你问到 ISR 了，那我得先说一下它到底解决什么问题。\n>\n> Kafka 的可靠性靠多副本实现，但你不可能每次写消息都等所有副本——万一有一个副本挂在那边，你的写入延迟就变成无限大了。所以 Kafka 搞了个 ISR 机制，它是一个动态的同步副本列表，Leader 在里头，跟 Leader 保持同步的 Follower 也在里头。"
+      }],
+      "label": "inferred",
+      "keywords": ["ISR"],
+      "category": "kafka",
+      "note": "核心断言拆解：(a) ISR 定义（动态同步副本列表）(b) 可靠性保证（所有副本确认后提交/只从 ISR 选新 leader）。doc 直接支持 (a)；(b) 未覆盖且无冲突",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "RocketMQ 的 NameServer 和 Broker 是怎么协作的？",
+      "documents": [{
+        "title": "11-RocketMQ核心架构与事务消息实现原理_2026-07-22 > 板块3：【原理深水区】 > 第一步：核心数据结构/存储模型是什么？",
+        "content": "**NameServer 的定位**：\n`NameServer`（名字服务）是 RocketMQ 的路由注册中心，可以理解为\"轻量版的 ZooKeeper\"。它只存路由表，不存消息内容，节点之间互不通信，每个 Broker 启动后向所有 NameServer 注册自己，Producer 和 Consumer 启动时从 NameServer 拉取路由。\n因为 NameServer 无状态，挂掉一个不会影响消息收发——Producer 会缓存路由表，30 秒刷新一次。"
+      }],
+      "label": "inferred",
+      "keywords": ["NameServer"],
+      "category": "mq",
+      "note": "核心断言拆解：(a) NameServer 维护路由信息 (b) Broker 注册与心跳 (c) 客户端拉取路由直连。doc 直接支持 (a)(c) 与 (b) 的注册子断言；\"定时心跳上报\"与\"直连 Broker 通信\"未覆盖且无冲突",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "TCP 四次挥手为什么要有 TIME_WAIT 状态？",
+      "documents": [{
+        "title": "23-TCP三次握手四次挥手与TCP状态机_2026-08-01 > 板块6：【面试题与答案】 > 题目2",
+        "content": "**第一层：底层理解（背给自己听）**\nTIME_WAIT 的存在是由 TCP 协议的可靠性语义决定的，不是可以被轻易裁剪的\"多余设计\"。\nTCP 四次挥手的最后一步是主动关闭方回复 ACK。这个 ACK 的可靠送达没有任何机制保障。所以协议设计了一个\"等足够久\"的策略：主动方在发完最后的 ACK 后不立即关闭，而是等 2MSL（两倍报文最大存活时间）。这段时间内：如果 ACK 丢了，被动方会重发 FIN，主动方重新 ACK 并重启 2MSL 定时器。"
+      }],
+      "label": "supported",
+      "keywords": ["2MSL", "ACK"],
+      "category": "network",
+      "note": "claim 与 doc 一致（ACK 可靠送达 + 2MSL 等旧报文消失），全部核心断言被支持",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "TLS 证书的信任链是怎么验证的？",
+      "documents": [{
+        "title": "25-HTTPS-TLS握手全流程与加密体系_2026-08-03 > 板块4：【项目落地硬货】 > 具体调参起始参考值",
+        "content": ".3 -Djdk.tls.client.protocols=TLSv1.2,TLSv1.3`，且**务必把对方的证书链导入自己的 TrustStore（信任库，JVM 内置的可信证书仓库）**——Java 的 `cacerts`（读作\"卡-色次\"，JVM 默认信任库文件）默认只信任公共 CA，内部系统用自签名证书（Self-signed Certificate，自己签自己、没经过 CA 的证书）时必须单独导入，否则报 `PKIX path building failed`"
+      }],
+      "label": "inferred",
+      "keywords": ["TrustStore"],
+      "category": "network",
+      "note": "核心断言拆解：(a) 信任链逐级验证过程（上级证书验下级签名至根）(b) 受信任根来源（系统/浏览器内置）(c) 有效期/域名/吊销检查。doc 直接支持 (b)（cacerts 信任库/公共 CA）；(a)(c) 未覆盖且无冲突",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "DPO 和 RLHF 有什么区别？",
+      "documents": [{
+        "title": "3-DPO直接偏好优化_2026-07-13 > 板块6：【面试题与答案】 > 题目2",
+        "content": "#### 第一层：底层理解（背给自己听）\n**DPO vs RLHF 的本质区别：Offline vs Online**\n| 维度 | RLHF（PPO） | DPO |\n|------|------------|-----|\n| 数据来源 | 在线采样（on-policy） | 离线偏好对（off-policy） |\n| 探索能力 | 有——PPO 采样当前策略的回答 | 无——只能在已有偏好数据上优化 |\n| 奖励信号 | 显式 RM 打分 | 隐式（log ratio） |"
+      }],
+      "label": "supported",
+      "keywords": ["DPO", "RLHF"],
+      "category": "ai_llm",
+      "note": "claim 与 doc 一致（DPO 离线偏好对/隐式信号无需 RM；RLHF 在线采样/显式 RM），全部核心断言被支持",
+      "part": "real_retrieval"
+    },
+    {
+      "question": "Kafka 的消费者组是怎么分配分区的？",
+      "documents": [{
+        "title": "30-Kafka消费者组与重平衡_2026-08-10",
+        "content": "重平衡（Rebalance）触发条件：1）消费者加入/退出（含崩溃，心跳超时被踢）；2）订阅主题或分区数变化；3）消费者组订阅了新主题。流程：组内消费者选举 Leader（第一个加入的）→ Leader 分配分区 → 同步给所有成员。"
+      }],
+      "label": "inferred",
+      "keywords": ["Leader"],
+      "category": "kafka",
+      "note": "核心断言拆解：(a) 分配流程（选举 Leader → Leader 分配 → 同步成员）(b) 具体分配策略（Range/RoundRobin/Sticky）。doc 直接支持 (a)；(b) 未覆盖且无冲突",
+      "part": "constructed"
+    },
+    {
+      "question": "G1 的 RSet 是怎么维护的？",
+      "documents": [{
+        "title": "1-G1垃圾收集器的Region分区机制与MixedGC全流程_2026-07-11 > 板块3 > 调优参数",
+        "content": "G1 常用调优参数：-XX:MaxGCPauseMillis=200 设定停顿目标；-XX:G1HeapRegionSize=8m 指定 Region 大小；-XX:InitiatingHeapOccupancyPercent=45 控制并发标记触发阈值。调优经验：大对象（Humongous）直接分配在连续 Region，频繁分配会提前触发并发标记；RSet 占用约 5%-10% 堆空间，Region 越小 RSet 越精细但开销越大。"
+      }],
+      "label": "inferred",
+      "keywords": ["RSet"],
+      "category": "java_gc",
+      "note": "核心断言拆解：(a) RSet 维护机制（写屏障/跨 Region 引用跟踪）(b) RSet 开销特征。doc 直接支持 (b)（占用 5%-10% 堆空间、Region 越小越精细）；(a) 未覆盖且无冲突",
+      "part": "constructed"
+    },
+    {
+      "question": "ConcurrentHashMap 1.7 和 1.8 有什么区别？",
+      "documents": [{
+        "title": "12-HashMap与ConcurrentHashMap底层原理_2026-07-23",
+        "content": "1.7 时代，ConcurrentHashMap 用的是分段锁——把整个 Map 切成 16 个 Segment，每个 Segment 里是一个小 HashMap。1.8 抛弃了 1.7 的 Segment 分段锁，改为 CAS + synchronized 锁单个桶或头节点，粒度更细、并发度更高。"
+      }],
+      "label": "inferred",
+      "keywords": ["分段锁"],
+      "category": "java_collection",
+      "note": "核心断言拆解：(a) 1.7 分段锁 vs 1.8 桶锁结构差异 (b) 扩容/计数等其他差异。doc 直接支持 (a)；(b) 未覆盖且无冲突",
+      "part": "constructed"
+    },
+    {
+      "question": "JWT 和 Session 认证各有什么优缺点？",
+      "documents": [{
+        "title": "22-JWT认证机制详解_2026-08-02",
+        "content": "JWT 流程：用户登录 → 服务端签发 JWT（Header.Payload.Signature 三段，Base64Url 编码）→ 客户端存储并在后续请求带 Authorization: Bearer <token> → 服务端验签通过即信任载荷。无状态：服务端不存会话，天然适合分布式。"
+      }],
+      "label": "inferred",
+      "keywords": ["无状态"],
+      "category": "auth",
+      "note": "核心断言拆解：(a) JWT 优缺点（无状态/免查询/不可撤销）(b) Session 侧优缺点（服务端存储/可吊销）。doc 直接支持 (a) 的无状态子断言；(b) 未覆盖且无冲突",
+      "part": "constructed"
+    },
+    {
+      "question": "Redis 的 AOF 重写是怎么触发的？",
+      "documents": [{
+        "title": "10-Redis持久化机制_2026-07-20",
+        "content": "Redis 两种持久化：RDB 定时生成全量快照（fork 子进程写临时文件），恢复快但可能丢最后一次快照后的数据；AOF 追加写命令日志，默认 everysec 每秒 fsync，最多丢 1 秒数据，文件会不断增大需 AOF 重写压缩。"
+      }],
+      "label": "inferred",
+      "keywords": ["AOF"],
+      "category": "redis",
+      "note": "核心断言拆解：(a) AOF 重写必要性（文件不断增大需压缩）(b) 重写触发条件与流程（阈值/后台进程）。doc 直接支持 (a)；(b) 未覆盖且无冲突",
+      "part": "constructed"
+    },
+    {
+      "question": "Netty 的 EventLoop 是怎么工作的？",
+      "documents": [{
+        "title": "7-Netty高性能IO与Reactor线程模型_2026-07-17",
+        "content": "Reactor 模型核心是事件分发：Boss 线程（主 Reactor）accept 新连接，注册到 Worker 线程组（子 Reactor）；Worker 线程处理该连接的读写事件，通过 ChannelPipeline 逐 handler 处理。Netty 默认 NioEventLoop 数量为 CPU 核数 * 2，一个连接生命周期内绑定固定线程，避免线程切换。"
+      }],
+      "label": "inferred",
+      "keywords": ["NioEventLoop"],
+      "category": "netty",
+      "note": "核心断言拆解：(a) EventLoop 数量与连接绑定 (b) 读写事件处理流程 (c) 任务队列/定时任务调度。doc 直接支持 (a)(b)；(c) 未覆盖且无冲突",
+      "part": "constructed"
+    },
+    {
+      "question": "MySQL 的 redo log 是物理日志还是逻辑日志？",
+      "documents": [{
+        "title": "3-MySQL-InnoDB事务隔离级别与锁机制_2026-07-13 > 板块6：【面试题与答案】 > 题目2",
+        "content": "MySQL 重启时先重做（redo）再回滚（undo）——先扫描 redo log，把已提交但数据页还没来得及刷盘的事务重新应用（前滚），再将崩溃时未提交的事务通过 undo log 回滚。核心原则：redo 保证已提交的不丢，undo 保证未提交的不脏。"
+      }],
+      "label": "inferred",
+      "keywords": ["redo"],
+      "category": "mysql",
+      "note": "核心断言拆解：(a) redo log 的物理/逻辑属性与 LSN 机制 (b) redo 的崩溃恢复用途（前滚已提交事务）。doc 直接支持 (b)；(a) 未覆盖且无冲突",
+      "part": "constructed"
+    },
+    {
+      "question": "Docker 容器和虚拟机有什么区别？",
+      "documents": [{
+        "title": "35-Docker镜像分层与构建优化_2026-08-15",
+        "content": "Docker 镜像分层：每个 RUN/COPY 指令生成一层只读层，多层通过联合文件系统（OverlayFS）堆叠成统一视图；容器层（可写）在最上。分层好处：复用——基础镜像层被多镜像共享（Registry 只传增量）、构建缓存——层不变直接复用。"
+      }],
+      "label": "inferred",
+      "keywords": ["OverlayFS"],
+      "category": "devops",
+      "note": "核心断言拆解：(a) Docker 镜像/容器层机制 (b) 与虚拟机隔离级别对比（共享内核 vs 独立内核）。doc 直接支持 (a)；(b) 未覆盖且无冲突",
+      "part": "constructed"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "metadata": {
+    "eval_type": "faithfulness",
+    "data_source": "dataset",
+    "judge_llm": "deepseek-v4-flash (temperature=0)",
+    "timestamp": "2026-08-07T22:43:51.026865"
+  },
+  "summary": {
+    "sample_size": 5,
+    "faithfulness_avg": 0.78,
+    "relevancy_avg": 0.9,
+    "avg_context_count": 2.0
+  },
+  "per_question": [
+    {
+      "question": "什么是G1垃圾收集器？它的核心创新是什么？",
+      "answer": "G1（Garbage-First，垃圾优先收集器）是 JDK 9 起的默认垃圾收集器，名字意为“优先回收垃圾最多的区域”。它把堆切成约 2048 个等大的 Region，每个 Region 在任意时刻只扮演一种角色（Eden、Survivor、Old、Humongous、Free），且角色不固定，实现了“逻辑分代、物理不分代”[1]。\n\n它的核心创新是 **Region 分区机制**。传统收集器（如 CMS、Parallel）的堆是连续的大块区域，回收整个代；而 G1 将堆划分为多个等大 Region，每次选择垃圾占比最高的几个 Region 来回收，从而在有限停顿时间内做到“收益最大化”[1",
+      "faithfulness": 0.8,
+      "relevancy": 1.0,
+      "context_count": 2
+    },
+    {
+      "question": "CMS收集器和G1收集器的主要区别是什么？",
+      "answer": "CMS收集器和G1收集器的主要区别可以从内存布局、回收范围、回收算法、内存碎片、停顿可控性、并发标记正确性、大堆支持和RSet等多个维度来看。根据检索到的文档，主要区别如下：\n\n> | 维度 | CMS | G1 |\n> | ------- | ---------------------------------- | --------------------------------------------------- |\n> | 内存布局 | 物理连续分代（Eden/Survivor/Old 各占一块连续空间） | 逻辑分代物理不分代（Region 散布全堆，角色动态切换） |\n> | 回收",
+      "faithfulness": 0.6,
+      "relevancy": 1.0,
+      "context_count": 2
+    },
+    {
+      "question": "ZGC的特点和适用场景是什么？",
+      "answer": "根据检索到的文档，ZGC 的特点和适用场景如下：\n\n**特点：**\n- **并发整理，STW 极低**：ZGC“并发整理 STW < 1ms”[1]，且“没有 Full GC 概念”[1][3]。\n- **依赖特定 JDK 版本与底层技术**：ZGC 在 JDK 15 成为正式特性，JDK 17 LTS 已稳定[3]；但其实现依赖“染色指针、读屏障”，需要团队能处理相关兼容性问题（如某些 JNI 库不兼容）[1][3]。\n\n**适用场景：**\n- **大堆场景**：当堆需要扩到 64GB 以上时，G1 的复制成本随堆线性增长，Mixed GC 停顿可能 > 500ms，而 ZGC 在大堆上优势",
+      "faithfulness": 1.0,
+      "relevancy": 1.0,
+      "context_count": 3
+    },
+    {
+      "question": "Java对象什么时候会进入老年代？",
+      "answer": "根据检索到的文档，Java对象进入老年代的情况主要与对象年龄有关：\n\n> “对象每熬过一次 Minor GC，年龄加 1；年龄达到阈值（默认 15）就晋升到老年代” [1]\n\n另外，文档还提到“新生代对象晋升失败”也是老年代相关的触发条件之一 [1]。\n\n因此，基于现有文档，可以回答：**对象在新生代中每经历一次 Minor GC 年龄加 1，当年龄达到默认阈值 15 时会晋升到老年代**。\n\n引用文档列表：\n[1] 1-G1垃圾收集器的Region分区机制与MixedGC全流程_2026-07-11",
+      "faithfulness": 1.0,
+      "relevancy": 0.5,
+      "context_count": 1
+    },
+    {
+      "question": "什么情况下会触发Full GC？如何优化以减少Full GC？",
+      "answer": "根据检索文档，触发 Full GC 及优化方法如下：\n\n### 一、什么情况下会触发 Full GC？\n\n**直接原因**是“Mixed GC 跟不上对象分配速率，导致老年代被填满后触发 Evacuation Failure，G1 退化为 Serial Full GC” [2]。具体根因可分为四类 [2]：\n\n1. **GC 参数不合理（最常见）**  \n   - `MaxGCPauseMillis` 设得太激进，每次 Mixed GC 只能回收少量 Region，回收速率 < 分配速率  \n   - `IHOP` 设得太高，并发标记启动太晚，Mixed GC 周期来不及完成  \n   - `",
+      "faithfulness": 0.5,
+      "relevancy": 1.0,
+      "context_count": 2
+    }
+  ]
+}

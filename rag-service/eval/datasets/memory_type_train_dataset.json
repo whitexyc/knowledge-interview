@@ -1,0 +1,482 @@
+[
+  {
+    "content": "用户喜欢喝美式咖啡",
+    "type": "preference"
+  },
+  {
+    "content": "用户偏好简洁的回答风格",
+    "type": "preference"
+  },
+  {
+    "content": "用户习惯晚睡",
+    "type": "preference"
+  },
+  {
+    "content": "用户喜欢用 VS Code 写代码",
+    "type": "preference"
+  },
+  {
+    "content": "用户偏爱中文回答",
+    "type": "preference"
+  },
+  {
+    "content": "用户喜欢摄影",
+    "type": "preference"
+  },
+  {
+    "content": "用户偏好周末出行",
+    "type": "preference"
+  },
+  {
+    "content": "用户习惯早起",
+    "type": "preference"
+  },
+  {
+    "content": "用户爱吃辣",
+    "type": "preference"
+  },
+  {
+    "content": "用户喜欢看科幻电影",
+    "type": "preference"
+  },
+  {
+    "content": "用户偏好远程办公",
+    "type": "preference"
+  },
+  {
+    "content": "用户习惯每周跑步",
+    "type": "preference"
+  },
+  {
+    "content": "用户喜欢 Java 和分布式",
+    "type": "preference"
+  },
+  {
+    "content": "用户偏爱极简设计",
+    "type": "preference"
+  },
+  {
+    "content": "用户喜欢安静的咖啡馆",
+    "type": "preference"
+  },
+  {
+    "content": "用户习惯用命令行",
+    "type": "preference"
+  },
+  {
+    "content": "用户偏好短回答",
+    "type": "preference"
+  },
+  {
+    "content": "用户喜欢养猫",
+    "type": "preference"
+  },
+  {
+    "content": "用户偏爱读纸质书",
+    "type": "preference"
+  },
+  {
+    "content": "用户习惯晚上学习",
+    "type": "preference"
+  },
+  {
+    "content": "用户喜欢蓝色",
+    "type": "preference"
+  },
+  {
+    "content": "用户偏好用 MacBook",
+    "type": "preference"
+  },
+  {
+    "content": "用户喜欢听古典音乐",
+    "type": "preference"
+  },
+  {
+    "content": "用户习惯午休",
+    "type": "preference"
+  },
+  {
+    "content": "用户偏爱轻量级框架",
+    "type": "preference"
+  },
+  {
+    "content": "用户喜欢打篮球",
+    "type": "preference"
+  },
+  {
+    "content": "用户偏好直接了当的沟通",
+    "type": "preference"
+  },
+  {
+    "content": "用户习惯记笔记",
+    "type": "preference"
+  },
+  {
+    "content": "用户喜欢旅行",
+    "type": "preference"
+  },
+  {
+    "content": "用户偏爱开源软件",
+    "type": "preference"
+  },
+  {
+    "content": "用户喜欢喝茶",
+    "type": "preference"
+  },
+  {
+    "content": "用户偏好自学",
+    "type": "preference"
+  },
+  {
+    "content": "用户习惯早起健身",
+    "type": "preference"
+  },
+  {
+    "content": "用户喜欢小狗",
+    "type": "preference"
+  },
+  {
+    "content": "用户偏爱侧躺睡",
+    "type": "preference"
+  },
+  {
+    "content": "用户喜欢看技术博客",
+    "type": "preference"
+  },
+  {
+    "content": "用户习惯睡前看书",
+    "type": "preference"
+  },
+  {
+    "content": "用户偏好团队协作",
+    "type": "preference"
+  },
+  {
+    "content": "用户喜欢做菜",
+    "type": "preference"
+  },
+  {
+    "content": "用户偏爱自然光",
+    "type": "preference"
+  },
+  {
+    "content": "用户是 Java 后端开发",
+    "type": "fact"
+  },
+  {
+    "content": "用户有三年工作经验",
+    "type": "fact"
+  },
+  {
+    "content": "用户住在北京",
+    "type": "fact"
+  },
+  {
+    "content": "用户在一家创业公司工作",
+    "type": "fact"
+  },
+  {
+    "content": "用户负责检索模块",
+    "type": "fact"
+  },
+  {
+    "content": "用户所在团队 8 人",
+    "type": "fact"
+  },
+  {
+    "content": "用户的学历是硕士",
+    "type": "fact"
+  },
+  {
+    "content": "用户毕业于某大学",
+    "type": "fact"
+  },
+  {
+    "content": "用户的职位是高级工程师",
+    "type": "fact"
+  },
+  {
+    "content": "用户使用 Redis 和 MySQL",
+    "type": "fact"
+  },
+  {
+    "content": "用户做过三年运维",
+    "type": "fact"
+  },
+  {
+    "content": "用户的家乡是成都",
+    "type": "fact"
+  },
+  {
+    "content": "用户有一个弟弟",
+    "type": "fact"
+  },
+  {
+    "content": "用户的年龄是 28 岁",
+    "type": "fact"
+  },
+  {
+    "content": "用户从事 AI 开发",
+    "type": "fact"
+  },
+  {
+    "content": "用户的项目是知识库问答系统",
+    "type": "fact"
+  },
+  {
+    "content": "用户会两种语言",
+    "type": "fact"
+  },
+  {
+    "content": "用户通过了 A 公司面试",
+    "type": "fact"
+  },
+  {
+    "content": "用户的领导是张工",
+    "type": "fact"
+  },
+  {
+    "content": "用户参与过开源项目",
+    "type": "fact"
+  },
+  {
+    "content": "用户的 GitHub 有 500 星",
+    "type": "fact"
+  },
+  {
+    "content": "用户负责三个微服务",
+    "type": "fact"
+  },
+  {
+    "content": "用户的技术栈是 Spring 全家桶",
+    "type": "fact"
+  },
+  {
+    "content": "用户的办公地在上海",
+    "type": "fact"
+  },
+  {
+    "content": "用户有 P8 级别",
+    "type": "fact"
+  },
+  {
+    "content": "用户的专业是计算机",
+    "type": "fact"
+  },
+  {
+    "content": "用户考过雅思 7 分",
+    "type": "fact"
+  },
+  {
+    "content": "用户的工龄是五年",
+    "type": "fact"
+  },
+  {
+    "content": "用户在公司负责消息队列",
+    "type": "fact"
+  },
+  {
+    "content": "用户的上一个项目是电商",
+    "type": "fact"
+  },
+  {
+    "content": "用户的导师姓李",
+    "type": "fact"
+  },
+  {
+    "content": "用户的身份证所在地是广州",
+    "type": "fact"
+  },
+  {
+    "content": "用户擅长性能调优",
+    "type": "fact"
+  },
+  {
+    "content": "用户的团队使用敏捷开发",
+    "type": "fact"
+  },
+  {
+    "content": "用户的毕业院校是某 985",
+    "type": "fact"
+  },
+  {
+    "content": "用户之前是做前端的",
+    "type": "fact"
+  },
+  {
+    "content": "用户的英语流利",
+    "type": "fact"
+  },
+  {
+    "content": "用户持有 AWS 证书",
+    "type": "fact"
+  },
+  {
+    "content": "用户的直属上级是经理王",
+    "type": "fact"
+  },
+  {
+    "content": "用户的社保在上海",
+    "type": "fact"
+  },
+  {
+    "content": "用户下周去北京出差",
+    "type": "event"
+  },
+  {
+    "content": "用户明天上午有面试",
+    "type": "event"
+  },
+  {
+    "content": "用户今晚八点开会",
+    "type": "event"
+  },
+  {
+    "content": "用户这周末去爬山",
+    "type": "event"
+  },
+  {
+    "content": "用户下个月要搬家",
+    "type": "event"
+  },
+  {
+    "content": "用户周五提交周报",
+    "type": "event"
+  },
+  {
+    "content": "用户明天参加技术分享会",
+    "type": "event"
+  },
+  {
+    "content": "用户这周三有体检",
+    "type": "event"
+  },
+  {
+    "content": "用户下周一入职新公司",
+    "type": "event"
+  },
+  {
+    "content": "用户今天下午要去医院",
+    "type": "event"
+  },
+  {
+    "content": "用户周末计划学 Kafka",
+    "type": "event"
+  },
+  {
+    "content": "用户下季度要述职",
+    "type": "event"
+  },
+  {
+    "content": "用户这周五交代码",
+    "type": "event"
+  },
+  {
+    "content": "用户明天去机场接人",
+    "type": "event"
+  },
+  {
+    "content": "用户下周六办婚礼",
+    "type": "event"
+  },
+  {
+    "content": "用户本周日有马拉松",
+    "type": "event"
+  },
+  {
+    "content": "用户下个月考驾照",
+    "type": "event"
+  },
+  {
+    "content": "用户明天要答辩",
+    "type": "event"
+  },
+  {
+    "content": "用户这周末看房子",
+    "type": "event"
+  },
+  {
+    "content": "用户下周二回老家",
+    "type": "event"
+  },
+  {
+    "content": "用户今天要去银行办业务",
+    "type": "event"
+  },
+  {
+    "content": "用户下周五有个 deadline",
+    "type": "event"
+  },
+  {
+    "content": "用户这周末去参加朋友婚礼",
+    "type": "event"
+  },
+  {
+    "content": "用户明天下午约了牙医",
+    "type": "event"
+  },
+  {
+    "content": "用户下个月换手机",
+    "type": "event"
+  },
+  {
+    "content": "用户这周五有项目评审",
+    "type": "event"
+  },
+  {
+    "content": "用户明天早上有晨会",
+    "type": "event"
+  },
+  {
+    "content": "用户下周三去杭州",
+    "type": "event"
+  },
+  {
+    "content": "用户这周末清理房间",
+    "type": "event"
+  },
+  {
+    "content": "用户下个月办理公积金",
+    "type": "event"
+  },
+  {
+    "content": "用户明天要交季度总结",
+    "type": "event"
+  },
+  {
+    "content": "用户这周六去图书馆还书",
+    "type": "event"
+  },
+  {
+    "content": "用户下周日有家庭聚会",
+    "type": "event"
+  },
+  {
+    "content": "用户明天晚上有电话会议",
+    "type": "event"
+  },
+  {
+    "content": "用户下个月去三亚度假",
+    "type": "event"
+  },
+  {
+    "content": "用户这周五开季度会议",
+    "type": "event"
+  },
+  {
+    "content": "用户明天去拿快递",
+    "type": "event"
+  },
+  {
+    "content": "用户下周二去客户现场",
+    "type": "event"
+  },
+  {
+    "content": "用户这周末搬家",
+    "type": "event"
+  },
+  {
+    "content": "用户下个月有考试",
+    "type": "event"
+  }
+]

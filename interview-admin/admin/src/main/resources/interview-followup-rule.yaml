@@ -1,0 +1,12 @@
+liteflow:
+  rule-source: classpath:liteflow/interview-followup-chain.xml
+
+xunzhi-agent:
+  interview:
+    rule-engine:
+      enable: true
+      default-chain-id: default_followup_chain
+      fail-open: true
+      rule-version: v1.0.0
+      default-max-follow-up: 2
+      default-low-score-threshold: 60

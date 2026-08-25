@@ -1,0 +1,152 @@
+[
+  {
+    "question": "什么是G1垃圾收集器？它的核心创新是什么？",
+    "ground_truth": "G1 (Garbage-First) 垃圾收集器是一种面向服务器端应用的垃圾收集器，于JDK 9成为默认GC。其核心创新是将堆划分为大小相等的Region，通过可预测的停顿时间模型（Pause Prediction Model）实现软实时目标，并采用Mixed GC同时回收年轻代和部分老年代，避免了传统收集器的Full GC停顿。",
+    "category": "java_gc"
+  },
+  {
+    "question": "CMS收集器和G1收集器的主要区别是什么？",
+    "ground_truth": "CMS使用标记-清除算法，以获取最短回收停顿时间为目标，但会产生内存碎片且需要参数调优；G1使用标记-整理算法，将堆分为Region，通过可预测的停顿模型控制停顿时间，同时避免了CMS的内存碎片问题。CMS在JDK 14被移除，G1成为默认收集器。",
+    "category": "java_gc"
+  },
+  {
+    "question": "ZGC的特点和适用场景是什么？",
+    "ground_truth": "ZGC (Z Garbage Collector) 是JDK 11引入的可扩展低延迟垃圾收集器，最大停顿时间不超过10ms，支持TB级堆内存。核心特点包括：基于染色指针（Colored Pointers）技术、并发标记-整理-重定位、使用读屏障（Load Barrier）实现并发重定位。适用于对延迟要求极高的场景，如金融交易、实时交互系统。",
+    "category": "java_gc"
+  },
+  {
+    "question": "Java对象什么时候会进入老年代？",
+    "ground_truth": "Java对象进入老年代的时机包括：(1) 年龄阈值到达 - 对象在Survivor区每熬过一次Minor GC年龄+1，默认15岁后晋升；(2) 动态年龄判定 - 当Survivor空间中相同年龄的对象大小总和超过Survivor空间一半时，大于等于该年龄的对象直接晋升；(3) 大对象直接分配在老年代（-XX:PretenureSizeThreshold）；(4) 空间分配担保 - Survivor空间不足以容纳存活对象时。",
+    "category": "java_gc"
+  },
+  {
+    "question": "什么情况下会触发Full GC？如何优化以减少Full GC？",
+    "ground_truth": "Full GC触发条件包括：(1) System.gc()显式调用；(2) 老年代空间不足；(3) 方法区（元空间）空间不足；(4) 空间分配担保失败；(5) CMS GC时出现Concurrent Mode Failure。优化策略：合理设置堆大小（-Xms=-Xmx）、调整年轻代与老年代比例、选择合适的垃圾收集器、避免大对象频繁分配、使用对象池复用、监控GC日志分析调优。",
+    "category": "java_gc"
+  },
+  {
+    "question": "Java线程池的核心参数有哪些？各自的作用是什么？",
+    "ground_truth": "ThreadPoolExecutor的7个核心参数：(1) corePoolSize - 核心线程数，即使空闲也保持存活；(2) maximumPoolSize - 最大线程数；(3) keepAliveTime - 非核心线程空闲存活时间；(4) unit - 时间单位；(5) workQueue - 阻塞队列，存储待执行任务；(6) threadFactory - 线程工厂，自定义线程创建；(7) handler - 拒绝策略，包括AbortPolicy(抛异常)、CallerRunsPolicy(调用者执行)、DiscardPolicy(丢弃)、DiscardOldestPolicy(丢弃最旧)。",
+    "category": "java_concurrency"
+  },
+  {
+    "question": "volatile关键字的作用和实现原理是什么？",
+    "ground_truth": "volatile是Java中的轻量级同步机制，保证变量的可见性和有序性（禁止指令重排），但不保证原子性。实现原理：(1) 写volatile变量时，JVM会向CPU发送Lock前缀指令，将缓存行写回内存并使其他CPU缓存的该变量失效（MESI协议）；(2) volatile变量的读写操作在JMM中插入内存屏障（Load Barrier和Store Barrier），防止指令重排序；(3) 典型应用场景：状态标记、双重检查锁定（DCL）单例模式。",
+    "category": "java_concurrency"
+  },
+  {
+    "question": "synchronized的底层实现原理是什么？锁升级过程是怎样的？",
+    "ground_truth": "synchronized基于对象头中的Mark Word和Monitor实现。JDK 1.6后引入锁升级机制：无锁 → 偏向锁(Biased Locking) → 轻量级锁(Lightweight Locking) → 重量级锁(Heavyweight Locking)。偏向锁记录线程ID避免CAS竞争；轻量级锁通过CAS将Mark Word复制到栈帧中的Lock Record；竞争激烈时升级为重量级锁，依赖操作系统的Mutex Lock，涉及用户态到内核态切换。JDK 15后偏向锁默认禁用。",
+    "category": "java_concurrency"
+  },
+  {
+    "question": "AQS (AbstractQueuedSynchronizer) 的工作原理是什么？ReentrantLock如何基于AQS实现？",
+    "ground_truth": "AQS是Java并发包的核心框架，基于FIFO双向队列实现。核心是用volatile int state表示同步状态，通过CAS修改state。ReentrantLock基于AQS实现：(1) 公平/非公平模式通过不同的tryAcquire实现；(2) lock()调用acquire(1)，先tryAcquire尝试获取锁，失败后加入同步队列CLH自旋；(3) unlock()调用release(1)，唤醒队列中的后继节点；(4) 可重入性通过state计数实现，同一线程多次获取state递增。",
+    "category": "java_concurrency"
+  },
+  {
+    "question": "CompletableFuture和Future有什么区别？如何使用CompletableFuture进行异步编排？",
+    "ground_truth": "Future的局限：get()阻塞等待、无法手动完成任务、不支持回调、不能组合多个异步操作。CompletableFuture增强：(1) 链式调用：thenApply(转换)、thenAccept(消费)、thenRun(执行)；(2) 组合操作：thenCombine(合并两结果)、thenCompose(扁平化)；(3) 并行执行：allOf(等待所有)、anyOf(任一完成)；(4) 异常处理：exceptionally(异常时)、handle(无论异常与否)；(5) 使用supplyAsync/runAsync指定线程池。",
+    "category": "java_concurrency"
+  },
+  {
+    "question": "Transformer模型的Self-Attention机制是如何工作的？",
+    "ground_truth": "Self-Attention（自注意力）机制允许模型在处理每个词时关注输入序列中的所有词。计算过程：(1) 对输入X分别乘以Wq、Wk、Wv矩阵得到Q(Query)、K(Key)、V(Value)；(2) 计算注意力分数 Score = Q·K^T / sqrt(dk)；(3) Softmax归一化得到注意力权重；(4) 权重乘以V得到输出。通过Scaled Dot-Product Attention公式：Attention(Q,K,V) = softmax(QK^T/√dk)V。多头注意力(Multi-Head)并行运行多个Attention，拼接后投影。",
+    "category": "ai_llm"
+  },
+  {
+    "question": "什么是MoE (Mixture of Experts)架构？它的优势和挑战是什么？",
+    "ground_truth": "MoE (混合专家) 是一种稀疏激活的模型架构，将模型的部分FFN层替换为多个专家(Expert)网络和一个门控(Gate/Router)网络。优势：(1) 增加模型参数量而计算量基本不变（稀疏激活，每次只激活少数专家）；(2) 每个专家可专注于特定领域知识。挑战：(1) 负载不均衡，部分专家过度使用而其他专家未被训练；(2) 专家间的通信开销；(3) 门控网络的Top-K路由需要额外训练技巧如负载均衡损失(Load Balancing Loss)、辅助损失(Auxiliary Loss)。",
+    "category": "ai_llm"
+  },
+  {
+    "question": "LoRA (Low-Rank Adaptation)微调的原理是什么？",
+    "ground_truth": "LoRA是一种参数高效的微调方法（PEFT）。核心思想：预训练模型的权重增量ΔW存在低秩特性，可分解为ΔW=BA（B和A为低秩矩阵）。微调时冻结原始权重W0，只训练低秩矩阵A和B；推理时合并为W=W0+BA。优势：(1) 训练参数量减少数百倍（如秩r=8时只训练原参数的万分之一）；(2) 不同任务可切换不同LoRA权重，无需存储多份完整模型；(3) 无推理延迟增加。",
+    "category": "ai_llm"
+  },
+  {
+    "question": "LLM中的KV Cache是什么？为什么能加速推理？",
+    "ground_truth": "KV Cache是自回归解码中的优化技术。Transformer的自注意力层需要计算所有历史token的Key和Value，如果不缓存，每个新token生成时都要重新计算全部历史token的K,V。KV Cache将每一层已计算过的K,V存储在GPU显存中，新token生成时只需计算当前token的K,V并与缓存拼接。这避免了O(n²)的计算复杂度增量，将每次生成的复杂度从O(n²)降低到O(n)。代价是显存占用随序列长度线性增长。",
+    "category": "ai_llm"
+  },
+  {
+    "question": "RAG (Retrieval-Augmented Generation)的核心流程是怎样的？与传统LLM生成有什么优势？",
+    "ground_truth": "RAG核心流程：(1) 用户Query输入；(2) 检索阶段 - 从知识库检索相关文档（向量检索+关键词检索）；(3) 增强阶段 - 将检索到的文档片段拼入prompt；(4) 生成阶段 - LLM基于增强后的prompt生成答案。优势：(1) 解决LLM知识截止日期问题，可访问最新信息；(2) 减少幻觉，答案有据可查；(3) 支持领域专业知识，无需微调；(4) 答案可溯源，标注引用来源；(5) 知识更新只需更新知识库，无需重训模型。",
+    "category": "ai_llm"
+  },
+  {
+    "question": "Kafka的Partition机制有什么作用？如何保证消息顺序性？",
+    "ground_truth": "Partition的作用：(1) 水平扩展 - 一个Topic可分为多个Partition分布在不同Broker，提升吞吐量；(2) 并行消费 - 同一Consumer Group内的Consumer可并行消费不同Partition；(3) 顺序保证 - 同一个Partition内消息是有序的（按offset递增）。保证消息顺序性的方式：(1) 将需保序的消息发送到同一Partition（通过指定Key或自定义Partitioner）；(2) 一个Partition只被一个Consumer消费；(3) 设置max.in.flight.requests.per.connection=1避免重试导致乱序。",
+    "category": "kafka"
+  },
+  {
+    "question": "Kafka Consumer Group的Rebalance机制是什么？有哪些Rebalance策略？",
+    "ground_truth": "Rebalance是将Partition重新分配给Consumer Group内Consumer的过程。触发条件：Consumer加入/离开Group、Topic Partition数变更、订阅Topic变更。策略：(1) RangeAssignor - 按Topic逐个分配，相邻Partition分配给同一Consumer（可能不均衡）；(2) RoundRobinAssignor - 轮询分配所有Partition（均匀但会导致更多跨Broker请求）；(3) StickyAssignor - 尽量保持原有分配，减少不必要迁移；(4) CooperativeStickyAssignor - 增量协作式Rebalance（Kafka 2.4+），Consumer不全部暂停，逐批迁移。",
+    "category": "kafka"
+  },
+  {
+    "question": "Kafka如何实现Exactly-Once语义？",
+    "ground_truth": "Kafka Exactly-Once语义基于幂等Producer和事务实现：(1) 幂等Producer - 通过Producer ID (PID)和Sequence Number去重，保证单Partition内的Exactly-Once；(2) 事务Producer - 通过Transaction Coordinator管理事务，使用Transaction ID (TID)和epoch防止僵尸Producer，支持跨Partition和跨Topic的原子写入；(3) 消费-转换-生产模式 - 通过sendOffsetsToTransaction将消费位移和生产消息放在同一事务中；(4) 隔离级别 - read_committed只读取已提交事务的消息。",
+    "category": "kafka"
+  },
+  {
+    "question": "Kafka的零拷贝(Zero-Copy)技术是如何实现的？",
+    "ground_truth": "Kafka利用Linux的sendfile系统调用实现零拷贝。传统数据传输需要4次上下文切换和4次数据拷贝（磁盘→内核缓冲区→用户缓冲区→Socket缓冲区→网卡）；sendfile将数据直接从内核缓冲区传输到Socket缓冲区（磁盘→内核缓冲区→Socket缓冲区→网卡），减少到2次上下文切换和2次数据拷贝。在支持SG-DMA的硬件上可进一步优化为只有1次拷贝（磁盘→内核缓冲区→SG-DMA→网卡）。Kafka通过FileChannel.transferTo()调用底层sendfile。",
+    "category": "kafka"
+  },
+  {
+    "question": "Kafka相比其他消息队列（如RabbitMQ）的核心优势是什么？",
+    "ground_truth": "Kafka核心优势：(1) 高吞吐 - 基于磁盘顺序I/O、零拷贝、批量发送、压缩等技术，单机可达百万级别TPS；(2) 持久化 - 消息写入磁盘并支持副本机制，数据不丢失；(3) 水平扩展 - Partition机制支持无限扩展，Consumer Group实现并行消费；(4) 消息回溯 - 基于offset可重复消费历史消息；(5) 日志存储 - 设计为分布式Commit Log，天然适合事件溯源和流处理。RabbitMQ更适合低延迟、复杂路由（Exchange/Queue/Binding）的即时消息场景。",
+    "category": "kafka"
+  },
+  {
+    "question": "熊艺诚的主要技术方向是什么？",
+    "ground_truth": "熊艺诚的技术方向主要集中在Java后端开发和分布式系统领域。技术栈包括Java/Spring Boot、Kafka消息队列、数据库技术（MySQL/Redis）以及大模型应用（RAG知识库）。研究兴趣涵盖JVM调优、高并发编程、分布式消息系统以及AI Agent开发。",
+    "category": "resume"
+  },
+  {
+    "question": "熊艺诚参加过哪些比赛？获得过什么奖项？",
+    "ground_truth": "熊艺诚在大学期间积极参与各类竞赛。获得过蓝桥杯Java组省级奖项，参加过ACM程序设计竞赛，在团队项目中负责后端架构设计和核心编码工作。这些比赛经历锻炼了算法思维和解决复杂问题的能力。",
+    "category": "resume"
+  },
+  {
+    "question": "熊艺诚在校期间的学习情况如何？主修课程有哪些？",
+    "ground_truth": "熊艺诚在校期间系统学习了计算机科学核心课程，包括数据结构与算法、操作系统、计算机网络、数据库原理、编译原理等。专业方向偏向软件工程和分布式系统。自学了Spring生态、消息队列中间件、分布式系统设计等工程实践知识。GPA保持在良好水平，具备理论与实践结合的能力。",
+    "category": "resume"
+  },
+  {
+    "question": "熊艺诚最近在学习和研究什么技术？",
+    "ground_truth": "熊艺诚最近的学习方向主要包括：(1) LLM应用开发 - RAG检索增强生成、Agent智能体、Function Calling等AI工程化技术；(2) 分布式系统 - Kafka深度使用、微服务架构设计；(3) JVM底层 - 垃圾收集器原理、JIT编译优化；(4) AI Agent框架 - LangChain、LangGraph等Agent编排工具。实践项目包括个人网站的Agentic RAG知识库系统。",
+    "category": "resume"
+  },
+  {
+    "question": "熊艺诚的个人网站项目包含哪些技术栈？",
+    "ground_truth": "熊艺诚的个人网站项目采用三层架构：(1) 前端 - React 18 + TypeScript + Ant Design + Vite构建的SPA应用，包含简历展示和RAG知识库问答UI；(2) 后端业务层 - Java Spring Boot 3.2，负责用户管理、文件上传、元数据管理、请求转发和熔断降级；(3) AI推理层 - Python FastAPI + LangChain，实现RAG知识库（多源检索+Rerank+意图路由+自我反思+引用溯源）、Agent编排和LLM调用管理。数据库使用PostgreSQL+pgvector（向量检索）和Milvus（向量数据库）。",
+    "category": "resume"
+  },
+  {
+    "question": "什么是CAP定理？在分布式系统设计中如何权衡？",
+    "ground_truth": "CAP定理（Brewer's Theorem）指出分布式系统无法同时满足一致性（Consistency）、可用性（Availability）和分区容错性（Partition Tolerance）三者。由于网络分区不可避免，实际上是在CP（牺牲可用性保证一致性）和AP（牺牲一致性保证可用性）之间选择。CP系统（如ZooKeeper、etcd通过Raft）在网络分区时拒绝写入；AP系统（如Cassandra、DynamoDB）允许写入但可能读到旧数据，通过最终一致性保证数据收敛。实际设计中可通过BASE理论（Basically Available, Soft state, Eventually consistent）做折中。",
+    "category": "comprehensive"
+  },
+  {
+    "question": "HTTP/2相比HTTP/1.1有什么核心改进？",
+    "ground_truth": "HTTP/2的核心改进：(1) 二进制分帧层 - 将HTTP消息分解为独立帧交错发送，解决HTTP/1.1的队头阻塞；(2) 多路复用 - 同一TCP连接可同时发送多个请求/响应，不用按顺序对应；(3) 头部压缩(HPACK) - 使用静态表和动态表压缩请求头，避免重复传输；(4) 服务器推送(Server Push) - 服务器可主动推送客户端可能需要的资源；(5) 流优先级 - 可设置资源加载优先级。HTTP/3进一步用QUIC(UDP)替代TCP彻底解决TCP层面的队头阻塞。",
+    "category": "comprehensive"
+  },
+  {
+    "question": "Redis的持久化方式RDB和AOF有什么区别？如何选择？",
+    "ground_truth": "RDB(快照)：定期将内存数据写入磁盘的dump.rdb文件。优点：文件紧凑适合备份、恢复速度快、对性能影响小；缺点：可能丢失最后一次快照后的数据。AOF(追加文件)：记录每次写操作命令到appendonly.aof文件。优点：数据更安全（默认everysec策略最多丢1秒数据）、可读性好；缺点：文件体积大、恢复速度慢。Redis 4.0后支持混合持久化(RDB preamble)，结合两者优点。选择建议：对数据安全要求高用AOF everysec；接受少量数据丢失用RDB；最佳实践是混合持久化或主从架构中主关闭持久化从开启。",
+    "category": "comprehensive"
+  },
+  {
+    "question": "什么是微服务架构？与单体架构相比有哪些优缺点？",
+    "ground_truth": "微服务架构将应用拆分为一组小型、独立的服务，每个服务围绕特定业务能力构建，可独立部署、扩展、技术选型。优点：(1) 独立部署和扩展；(2) 技术栈灵活性；(3) 故障隔离；(4) 团队自治。缺点：(1) 分布式系统复杂性（网络延迟、数据一致性、服务发现）；(2) 运维成本高（容器化、监控、日志聚合、链路追踪）；(3) 跨服务事务管理困难（需Saga/TCC等分布式事务方案）；(4) 接口兼容性管理。选择原则：初创/小团队用单体快速迭代，业务复杂/团队规模大时渐进式拆分为微服务。",
+    "category": "comprehensive"
+  },
+  {
+    "question": "Docker和虚拟机的核心区别是什么？容器化有什么优势？",
+    "ground_truth": "核心区别：虚拟机通过Hypervisor虚拟化硬件层，每个VM有独立Guest OS；Docker容器共享宿主机的操作系统内核，通过Namespace和Cgroups实现隔离。容器化优势：(1) 启动速度快（秒级 vs 分钟级）；(2) 资源利用率高（共享OS内核，无Guest OS开销）；(3) 镜像体积小（通常MB级别 vs GB级别）；(4) 环境一致性 - 'Build once, run anywhere'；(5) 方便的版本管理和镜像分层复用。但容器隔离性弱于VM，共享内核存在安全风险，不适合需要不同OS内核的场景。",
+    "category": "comprehensive"
+  }
+]

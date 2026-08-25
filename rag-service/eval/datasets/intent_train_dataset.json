@@ -1,0 +1,1446 @@
+[
+  {
+    "query": "你们网站都有哪些功能？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "你能做什么？能帮我解决问题吗",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "这个知识库都收录了哪些主题？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "你的知识库里有讲线程池的吗？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "给我推荐一篇入门文档呗",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "你们最近新增了什么内容？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "你都会哪些技术话题？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "从哪篇开始学比较好？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "有没有讲 Redis 的文档？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "我该怎么用这个知识库？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "你能解释一下你们系统里的概念吗？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "这个平台主要收录了哪些方面的内容？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "你们的问答系统支持什么问题？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "我想了解 JVM，你能给我介绍吗？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "G1垃圾收集器的核心创新是什么？",
+    "intent": "knowledge",
+    "note": "边界易混 E2E bug 类"
+  },
+  {
+    "query": "帮我看看这个知识库能不能解决我的问题",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "你们是怎么做技术问答的？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "这个网站里有没有面试题？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "怎么才能学好分布式系统？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "你们的文档里有没有讲高并发的？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "这系统能查 Kafka 吗？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "帮我推荐学习 Spring 的顺序",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "你们的知识库支持哪些内容？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "我想搜一下 JVM 相关的内容",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "这个系统能帮我查技术问题吗？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "有没有关于 MySQL 优化的文档？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "你们这里能解答哪些问题？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "我该从哪里开始了解这个系统？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "你的知识库和搜索引擎有什么区别？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "有没有讲消息队列的文档？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "你们有关于微服务的文档吗？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "你知识库里最火的话题是什么？",
+    "intent": "knowledge",
+    "note": "边界易混"
+  },
+  {
+    "query": "G1 垃圾收集器的 Region 分区机制是怎样的？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "JVM 内存溢出怎么排查？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "Redis 的持久化机制有哪些？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "GC Roots 有哪些？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "CMS 和 G1 在停顿上的区别？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "Full GC 频繁怎么排查？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "JVM 类加载的双亲委派模型是什么？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "HashMap 1.7 与 1.8 的实现有什么不同？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "ConcurrentHashMap 为什么线程安全？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "ThreadLocal 为什么会有内存泄漏问题？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "CAS 和 synchronized 怎么选？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "线程池的核心参数怎么设置？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "AQS 的原理是什么？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "Spring Bean 的生命周期是什么？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "Spring 事务什么时候会失效？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "Spring Boot 的自动配置原理是什么？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "MySQL 的索引为什么用 B+ 树？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "MySQL 的隔离级别有哪些？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "MySQL 索引在什么情况下会失效？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "Redis 缓存穿透、击穿、雪崩有什么区别？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "Redis 哨兵和集群有什么区别？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "Redis 的过期删除策略是什么？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "Kafka 的 ISR 机制是怎么保证可靠性的？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "Kafka 消息会丢失吗？怎么保证不丢？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "RocketMQ 和 Kafka 怎么选型？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "Netty 的 Reactor 线程模型怎么工作的？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "TCP 三次握手为什么是三次？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "HTTP/2 相比 HTTP/1.1 有哪些改进？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "分布式事务两阶段提交是什么？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "分布式锁用 Redis 还是 Zookeeper？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "CAP 定理怎么权衡？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "Nacos 做注册中心的原理是什么？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "Sentinel 限流熔断怎么工作的？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "JWT 和 Session 的区别是什么？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "接口幂等性怎么设计",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "Docker 和虚拟机有什么不同？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "Kubernetes 有哪些核心组件？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "ES 的倒排索引是什么？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "B+ 树为什么适合做数据库索引？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "消息队列怎么保证顺序消费？",
+    "intent": "knowledge",
+    "note": "专有术语"
+  },
+  {
+    "query": "内存老是溢出咋办",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "服务动不动就卡死怎么回事",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "数据库查询越来越慢怎么办",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "系统老是宕机是什么原因",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "接口请求特别慢怎么优化",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "线程老是死锁怎么办",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "网站一上线就崩了咋整",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "缓存加了还是慢是为什么",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "项目启动特别慢正常吗",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "日志里全是报错怎么排查",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "高并发下服务扛不住怎么办",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "数据重复了怎么去重",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "订单老是超时怎么办",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "两个系统间消息老是丢怎么办",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "登录状态老丢怎么回事",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "数据库连不上了怎么查",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "代码跑着跑着内存就满了咋办",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "请求量一大就 502 是什么原因",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "服务之间怎么通信比较好",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "图片上传老是失败怎么处理",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "前端页面加载很慢是后端的问题吗",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "定时任务老是重复执行怎么办",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "数据经常不一致怎么解决",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "系统升级后老出 bug 怎么办",
+    "intent": "knowledge",
+    "note": "口语化"
+  },
+  {
+    "query": "G1 垃圾收集器和 CMS 的区别是什么",
+    "intent": "knowledge"
+  },
+  {
+    "query": "Java 内存模型 JMM 是什么？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "volatile 关键字的作用是什么？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "synchronized 的锁升级过程是怎样的？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "深拷贝和浅拷贝有什么区别？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "equals 和 hashCode 为什么要一起重写？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "String 为什么是不可变的？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "Java 8 的 Stream 流怎么用？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "泛型擦除是什么？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "反射的原理是什么？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "动态代理有哪些实现方式？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "数据库事务的 ACID 特性是什么？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "数据库的乐观锁和悲观锁有什么区别？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "聚簇索引和非聚簇索引有什么区别？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "大表分页查询怎么优化？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "慢 SQL 怎么定位和优化？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "Redis 的数据类型有哪些？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "Redis 为什么快？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "缓存一致性问题怎么解决？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "限流算法有哪些？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "熔断和降级的区别是什么？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "负载均衡有哪些策略？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "服务注册和发现是怎么工作的？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "微服务拆分的原则是什么？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "幂等和去重的区别是什么？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "雪花算法生成的是什么？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "令牌桶和漏桶算法的区别？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "灰度发布是什么？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "蓝绿部署是什么？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "混沌工程是什么？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "可观测性包括哪些部分？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "链路追踪的原理是什么？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "容器和镜像的区别是什么？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "什么是冷启动和热启动？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "函数式编程的特点是什么？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "设计模式有哪些分类？",
+    "intent": "knowledge"
+  },
+  {
+    "query": "你好",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "嗨喽",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "哈喽",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "在吗",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "早上好",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "中午好",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "下午好",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "晚上好",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "吃饭了没",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "睡了吗",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "忙不忙",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "最近咋样",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "想你了",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "好久不见",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你叫什么名字",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你是谁",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "介绍一下你自己",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你多大了",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你是哪里人",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你住在哪",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你有女朋友吗",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你会唱歌吗",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "唱首歌听听",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "讲个笑话",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "讲个段子",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "猜个谜语",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "夸夸我",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你是真人吗",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你是机器人吗",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "再见",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "拜拜啦",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "晚安",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "明天聊",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "下次再聊",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "先忙去了",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "回头见",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "谢谢",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "谢谢帮忙",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "太感谢了",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "辛苦啦",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你真好",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "真棒",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "厉害厉害",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "给你点赞",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "太牛了",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "好厉害呀",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "棒棒的",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "无聊死了",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "好无聊啊",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "陪我聊聊",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "说点什么吧",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "随便聊聊",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "今天心情不好",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "今天好累",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "周末过得好吗",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "工作好辛苦",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "生活好难",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "好开心呀",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "哈哈哈哈",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "哈哈",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "哈哈哈笑死我了",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "嗯嗯",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "好的",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "没问题呀",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "明白了",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "是的",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "对呀",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "没错",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "我也是",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "那好吧",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "行吧",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "算了算了",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "咋了",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "怎么啦",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "发生什么事了",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "说真的",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "我觉得你说得对",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你这个回答我很满意",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "继续保持",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "换个话题聊聊",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "说点别的",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "我们聊点别的吧",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你听过什么好听的歌",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "推荐一部电影",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "有什么好看的剧",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你玩游戏吗",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你爱吃什么",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "周末打算干嘛",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你平时喜欢做什么",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你开心吗",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你累吗",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你心情怎么样",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "我心情不错",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "我最近在学东西",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你懂我意思吗",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你能听懂我说的话吗",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你在听吗",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你还在吗",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你没反应了吗",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你好笨呀",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "你真聪明",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "开玩笑的",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "别当真哈",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "好呀好呀",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "晚点聊",
+    "intent": "casual_chat"
+  },
+  {
+    "query": "现在几点了",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在几点钟",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在是几点",
+    "intent": "realtime"
+  },
+  {
+    "query": "北京时间几点",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在几点半了",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天是几号",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天是星期几",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天什么日子",
+    "intent": "realtime"
+  },
+  {
+    "query": "今年是哪一年",
+    "intent": "realtime"
+  },
+  {
+    "query": "今年几几年",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在是什么季节",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在是上午还是下午啊",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在是早上还是晚上",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天天气怎么样",
+    "intent": "realtime"
+  },
+  {
+    "query": "明天天气咋样",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天天气好吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天下雨吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "明天会下雨吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天气温多少度",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在室外多少度",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天温度高不高",
+    "intent": "realtime"
+  },
+  {
+    "query": "明天冷不冷",
+    "intent": "realtime"
+  },
+  {
+    "query": "这几天热不热",
+    "intent": "realtime"
+  },
+  {
+    "query": "后天天气怎么样",
+    "intent": "realtime"
+  },
+  {
+    "query": "周末天气适合出去玩吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "这周天气怎么样",
+    "intent": "realtime"
+  },
+  {
+    "query": "明天有雾霾吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天风力大吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天紫外线强吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在湿度多少",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天空气质量怎么样",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天有啥新闻",
+    "intent": "realtime"
+  },
+  {
+    "query": "有什么大新闻",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天热点新闻是什么",
+    "intent": "realtime"
+  },
+  {
+    "query": "最新科技新闻",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天股市行情怎么样",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天大盘涨还是跌",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在上证指数多少点",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天 A 股行情如何",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在美股怎么样",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天港股怎么样",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天基金涨了吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天比特币价格多少",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天金价多少",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在黄金多少钱一克",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天汇率是多少",
+    "intent": "realtime"
+  },
+  {
+    "query": "美元兑人民币现在多少",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天油价涨了吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天有什么比赛",
+    "intent": "realtime"
+  },
+  {
+    "query": "今晚有什么球赛",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天足球比分多少",
+    "intent": "realtime"
+  },
+  {
+    "query": "今晚有直播吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在比分多少了",
+    "intent": "realtime"
+  },
+  {
+    "query": "最近有什么新电影",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天上映什么电影",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在电影院有什么好看的",
+    "intent": "realtime"
+  },
+  {
+    "query": "最近有什么热门电视剧",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天有什么综艺",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在流行啥",
+    "intent": "realtime"
+  },
+  {
+    "query": "今年流行什么发型",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在流行什么歌",
+    "intent": "realtime"
+  },
+  {
+    "query": "最近有什么热梗",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天微博热搜是什么",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在哪里堵车",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天限行吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天高速免费吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在航班情况怎么样",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天火车票还有吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "离周末还有几天",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天放假吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "这周放不放假",
+    "intent": "realtime"
+  },
+  {
+    "query": "明天是工作日吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "今年国庆放假几天",
+    "intent": "realtime"
+  },
+  {
+    "query": "距离五一还有多久",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天适合出门吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在几点下班合适",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在北京时间几点",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在几点几分",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在是几点钟了",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天几月几号",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在是农历几号",
+    "intent": "realtime"
+  },
+  {
+    "query": "今年润几月",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在什么时辰",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天天气怎么样啊",
+    "intent": "realtime"
+  },
+  {
+    "query": "明天天气怎么样呢",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天会下雪吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "明天台风来吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天地震了吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在日出了吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天日落几点",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在月亮出来了没",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天太阳几点下山",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在几点放学",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在几点了该睡了",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在能出门吗",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天有什么活动",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在流行语是什么",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在几点开会",
+    "intent": "realtime"
+  },
+  {
+    "query": "今天会议几点开始",
+    "intent": "realtime"
+  },
+  {
+    "query": "现在几点了呀",
+    "intent": "realtime"
+  }
+]

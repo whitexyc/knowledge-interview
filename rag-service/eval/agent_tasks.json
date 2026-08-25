@@ -1,0 +1,218 @@
+[
+  {
+    "id": "at-001",
+    "task": "什么是G1垃圾收集器？它的核心创新是什么？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["G1", "Region"]
+  },
+  {
+    "id": "at-002",
+    "task": "CMS收集器和G1收集器的主要区别是什么？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["CMS", "G1"]
+  },
+  {
+    "id": "at-003",
+    "task": "Java线程池的核心参数有哪些？各自的作用是什么？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["ThreadPoolExecutor", "任务队列"]
+  },
+  {
+    "id": "at-004",
+    "task": "synchronized的底层实现原理是什么？锁升级过程是怎样的？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["锁升级", "偏向锁"]
+  },
+  {
+    "id": "at-005",
+    "task": "什么是MoE (Mixture of Experts)架构？它的优势和挑战是什么？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["MoE", "专家"]
+  },
+  {
+    "id": "at-006",
+    "task": "RAG (Retrieval-Augmented Generation)的核心流程是怎样的？与传统LLM生成有什么优势？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["RAG", "检索"]
+  },
+  {
+    "id": "at-007",
+    "task": "Kafka如何实现Exactly-Once语义？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["Exactly-Once", "幂等"]
+  },
+  {
+    "id": "at-008",
+    "task": "Redis的持久化方式RDB和AOF有什么区别？如何选择？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["RDB", "AOF"]
+  },
+  {
+    "id": "at-009",
+    "task": "G1 中 Humongous 大对象是怎么分配的？频繁分配会有什么影响？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["Humongous", "Region"]
+  },
+  {
+    "id": "at-010",
+    "task": "Spring 是怎么解决循环依赖的？三级缓存是什么？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["循环依赖", "三级缓存"]
+  },
+  {
+    "id": "at-011",
+    "task": "什么是覆盖索引？为什么能避免回表？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["覆盖索引", "回表"]
+  },
+  {
+    "id": "at-012",
+    "task": "MySQL 崩溃恢复是怎么用 redo log 和 undo log 实现的？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["redo log", "undo log"]
+  },
+  {
+    "id": "at-013",
+    "task": "缓存穿透、击穿、雪崩各自怎么解决？布隆过滤器用在哪？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["穿透", "布隆过滤器"]
+  },
+  {
+    "id": "at-014",
+    "task": "雪花算法生成的 ID 由哪几部分组成？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["雪花算法", "时间戳"]
+  },
+  {
+    "id": "at-015",
+    "task": "Agentic RAG 和传统 RAG 的区别是什么？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["Agentic RAG", "自主"]
+  },
+  {
+    "id": "at-016",
+    "task": "TCP 四次挥手为什么要有 TIME_WAIT 状态？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["TIME_WAIT", "四次挥手"]
+  },
+  {
+    "id": "at-017",
+    "task": "什么是 RRF 融合？为什么比加权好？",
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["倒数排名", "分数量纲"]
+  },
+  {
+    "id": "at-101",
+    "task": ["G1 垃圾收集器中的 RSet（Remembered Set）是做什么的？", "它为什么需要 RSet？"],
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["RSet", "引用"]
+  },
+  {
+    "id": "at-102",
+    "task": ["什么是 CAP 定理？", "在分布式系统设计中如何权衡？"],
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["CAP", "一致性"]
+  },
+  {
+    "id": "at-103",
+    "task": ["Kafka 的零拷贝技术是怎么实现的？", "和 Netty 的零拷贝有什么异同？"],
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["零拷贝", "Netty"]
+  },
+  {
+    "id": "at-104",
+    "task": ["Seata 的 AT 模式是怎么实现分布式事务的？", "TCC 模式和 AT 模式有什么区别？"],
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["AT 模式", "TCC"]
+  },
+  {
+    "id": "at-105",
+    "task": ["双亲委派模型的加载流程是怎样的？", "什么情况下需要打破双亲委派模型？"],
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["双亲委派", "加载"]
+  },
+  {
+    "id": "at-106",
+    "task": ["vLLM 的 PagedAttention 解决了什么问题？", "为什么传统 KV Cache 的显存利用率低？"],
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["PagedAttention", "KV Cache"]
+  },
+  {
+    "id": "at-107",
+    "task": ["什么是微服务架构？", "与单体架构相比有哪些优缺点？"],
+    "expected_tools": ["search_knowledge", "generate_answer"],
+    "answer_points": ["微服务", "单体"]
+  },
+  {
+    "id": "at-201",
+    "task": "你好呀",
+    "expected_tools": [],
+    "answer_points": ["你好"]
+  },
+  {
+    "id": "at-202",
+    "task": "你能介绍一下你自己吗？",
+    "expected_tools": [],
+    "answer_points": ["助手"]
+  },
+  {
+    "id": "at-203",
+    "task": "你会做什么？",
+    "expected_tools": [],
+    "answer_points": ["助手"]
+  },
+  {
+    "id": "at-301",
+    "task": "现在几点了？",
+    "expected_tools": [],
+    "answer_points": ["实时"]
+  },
+  {
+    "id": "at-302",
+    "task": "今天天气怎么样？",
+    "expected_tools": [],
+    "answer_points": ["实时"]
+  },
+  {
+    "id": "at-303",
+    "task": "今天是几号？",
+    "expected_tools": [],
+    "answer_points": ["实时"]
+  },
+  {
+    "id": "at-401",
+    "task": "用大白话讲讲 G1 垃圾回收器是怎么工作的？",
+    "expected_tools": ["search_knowledge", "re_search", "generate_answer"],
+    "answer_points": ["G1", "Region"]
+  },
+  {
+    "id": "at-402",
+    "task": "我听说 Redis 有个叫 AOF 的东西，它是干嘛用的？",
+    "expected_tools": ["search_knowledge", "re_search", "generate_answer"],
+    "answer_points": ["AOF"]
+  },
+  {
+    "id": "at-403",
+    "task": "网上说 MySQL 靠一种 log 实现崩溃恢复，具体是什么原理？",
+    "expected_tools": ["search_knowledge", "re_search", "generate_answer"],
+    "answer_points": ["redo log"]
+  },
+  {
+    "id": "at-501",
+    "task": "我之前和你聊过技术问题，你还记得我关注哪些方向吗？",
+    "expected_tools": ["recall_memory", "search_knowledge", "generate_answer"],
+    "answer_points": ["记忆"]
+  },
+  {
+    "id": "at-502",
+    "task": "我的记忆里关于我的偏好有什么？",
+    "expected_tools": ["recall_memory", "search_knowledge", "generate_answer"],
+    "answer_points": ["记忆"]
+  },
+  {
+    "id": "at-503",
+    "task": "结合我的长期记忆，帮我看看我之前关心过什么？",
+    "expected_tools": ["recall_memory", "search_knowledge", "generate_answer"],
+    "answer_points": ["记忆"]
+  }
+]
