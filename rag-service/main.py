@@ -514,7 +514,10 @@ async def _stream_generate_verify(request, fastapi_req, identity, intent, _t, do
         answer_parts.append(token); total_len += len(token)
         yield f"event: token\ndata: {json.dumps(token)}\n\n"
         if total_len >= MAX_ANSWER_LEN:
-            answer_parts.append("\n\n[答案过长，已截断]"); break
+            trunc_msg = "\n\n[答案过长，已截断]"
+            answer_parts.append(trunc_msg)
+            yield f"event: token\ndata: {json.dumps(trunc_msg)}\n\n"
+            break
     sources = _extract_sources(docs)
     answer_text = "".join(answer_parts)
     schedule_stream_persist(intent, request.query, answer_text, identity, request.history)

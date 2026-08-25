@@ -1109,7 +1109,8 @@ class RAGEngine:
                            doc_content_hash: str = "",
                            duplicate_cluster_id: Optional[str] = None,
                            is_canonical: bool = True,
-                           doc_embedding: Optional[list] = None) -> dict:
+                           doc_embedding: Optional[list] = None,
+                           review_status: str = "approved") -> dict:
         """添加文档：分块 → 向量化 → 落库
 
         流程：
@@ -1140,6 +1141,7 @@ class RAGEngine:
             duplicate_cluster_id: 语义重复簇 ID（可选，None=非重复）
             is_canonical: 是否 canonical（False=重复副本，检索抑制）
             doc_embedding: 文档级 embedding（可选，存根父块）
+            review_status: 审查状态（approved/rejected，module-075 知识抓取标记）
 
         Returns:
             {"id": int, "title": str, "chunks": int, "duplicate": bool}
@@ -1201,6 +1203,7 @@ class RAGEngine:
                         doc_content_hash=doc_content_hash or None,
                         duplicate_cluster_id=duplicate_cluster_id,
                         is_canonical=is_canonical,
+                        review_status=review_status,
                     )
                     session.add(doc)
                     parent_objs.append(doc)
@@ -1232,6 +1235,7 @@ class RAGEngine:
                         doc_content_hash=doc_content_hash or None,
                         duplicate_cluster_id=duplicate_cluster_id,
                         is_canonical=is_canonical,
+                        review_status=review_status,
                     )
                     session.add(doc)
 

@@ -456,6 +456,8 @@ def parse_document(data: bytes, filename: str = "") -> ParsedDocument:
                 return _parse_xlsx(data)
             if fmt == "csv":
                 return _parse_csv(data)
+            if fmt == "html":
+                return ParsedDocument(text=_decode_text(data), format=fmt, engine="text")
             raise DocumentParseError(_map_error(e, fmt)) from e
 
     # AnyDoc 不可用：分层回退（诚实降级）
@@ -467,6 +469,8 @@ def parse_document(data: bytes, filename: str = "") -> ParsedDocument:
         return _parse_xlsx(data)
     if fmt == "csv":
         return _parse_csv(data)
+    if fmt == "html":
+        return ParsedDocument(text=_decode_text(data), format=fmt, engine="text")
     raise DocumentParseError(
         f"{fmt} 格式需要 AnyDoc 解析引擎（未安装），请上传 md/txt/pdf/docx/xlsx/csv"
     )

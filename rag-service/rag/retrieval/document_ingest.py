@@ -84,6 +84,7 @@ async def ingest_document(
     source: str = "",
     *,
     persist_original: bool = True,
+    review_status: str = "approved",
 ) -> dict:
     """完整 ingestion 入口
 
@@ -93,6 +94,7 @@ async def ingest_document(
         title: 显式标题（空 → 端点按文件名推导）
         source: 来源标识
         persist_original: 是否落盘原件（WP5；命名避开模块级 save_original 函数）
+        review_status: 审查状态（approved/rejected，module-075 知识抓取标记）
 
     Returns:
         {
@@ -186,6 +188,7 @@ async def ingest_document(
         duplicate_cluster_id=cluster_id,
         is_canonical=is_canonical,
         doc_embedding=doc_embedding,
+        review_status=review_status,
     )
     result["original_path"] = original_path
     result["page_count"] = parsed.page_count

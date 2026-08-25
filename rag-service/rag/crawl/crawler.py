@@ -215,9 +215,10 @@ async def run_crawl(
             from rag.retrieval.document_ingest import ingest_document
             ingest_result = await ingest_document(
                 data=result.content.encode("utf-8"),
-                filename=f"crawl_{url_pattern.split('/')[-1][:50]}.html",
+                filename=f"crawl_{url_pattern.split('/')[-1][:50]}.txt",
                 title=result.title or name,
-                source=f"crawl:{url_pattern}",
+            source=f"crawl:{url_pattern}",
+            review_status=result.review_status,
             )
             summary.crawled += 1
             if review == "approved":

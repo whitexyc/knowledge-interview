@@ -255,6 +255,9 @@ class TestRunCrawl:
                     assert result.rejected == 1
                     # rejected 但仍入库（不丢数据）
                     mock_ingest.assert_called_once()
+                    # 验证 review_status 传入 ingest_document
+                    call_kwargs = mock_ingest.call_args[1]
+                    assert call_kwargs.get("review_status") == "rejected"
 
     @pytest.mark.asyncio
     async def test_max_pages_limit(self, monkeypatch):
