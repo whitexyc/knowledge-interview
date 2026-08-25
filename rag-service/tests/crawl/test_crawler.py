@@ -69,6 +69,7 @@ class TestFetchPage:
     async def test_success(self):
         mock_resp = MagicMock()
         mock_resp.text = "<html><title>Test Page</title><body>Hello</body></html>"
+        mock_resp.status_code = 200
         mock_resp.headers = {"content-type": "text/html"}
         mock_resp.raise_for_status = MagicMock()
 

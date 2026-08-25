@@ -11,6 +11,7 @@ pytest 全局配置 — 测试环境统一取消 IP 限流
 （request.state.client_ip / user_id）是中间件独立步骤，不受影响。
 """
 import pytest
+from unittest.mock import AsyncMock
 
 
 @pytest.fixture(autouse=True)
@@ -236,3 +237,23 @@ def default_crawl_disabled(monkeypatch):
 
     monkeypatch.setattr(settings, "crawl_enabled", False)
 
+
+@pytest.fixture(autouse=True)
+def default_antibot_mocks(monkeypatch):
+    """测试环境钉住 module-077 反爬功能=安全值（对齐 056/058 模式）
+
+    robots 检查恒放行（不触发真实 HTTP）；限速恒 0（不延迟）；代理恒空（直连）；
+    重试恒 0（不重试，保持存量行为）。
+    """
+    from src.config import settings
+    from rag.crawl.crawler import _check_robots_allowed
+
+    monkeypatch.setattr(settings, "crawl_retry_max", 0)
+    monkeypatch.setattr(settings, "crawl_proxies", "")
+    monkeypatch.setattr(settings, "crawl_robots_cache_ttl", 0)
+    monkeypatch.setattr(settings, "crawl_user_agents", "")
+    monkeypatch.setattr(
+        "rag.crawl.crawler._check_robots_allowed",
+        AsyncMock(return_value=True),
+    )
+    monkeypatch.setattr(settings, "crawl_request_delay_seconds", 0)  # module-077: 防测试限速延迟

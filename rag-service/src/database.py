@@ -246,7 +246,7 @@ async def ensure_document_parsing_columns() -> None:
 
 
 async def init_db():
-    """初始化数据库：启用 pgvector 扩展 + 自愈建表/加列（feedback / request_logs / verify_results / superseded / type+last_recalled_at / tool_call_logs）"""
+    """初始化数据库：启用 pgvector 扩展 + 自愈建表/加列（feedback / request_logs / verify_results / superseded / type+last_recalled_at / tool_call_logs / review_score）"""
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         logger.info("pgvector extension 已就绪")
@@ -270,7 +270,8 @@ async def init_db():
     logger.info("documents 表 review_status 列已就绪（module-075）")
     await ensure_max_depth_column()
     logger.info("source_configs 表 max_depth 列已就绪（module-076）")
-
+    await ensure_review_score_column()
+    logger.info("documents 表 review_score 列已就绪（module-078）")
 
 # source_configs 表 DDL（module-075 知识抓取流水线）：crawl 来源配置表。
 # 白名单由 source_configs 表驱动（用户可配），POST /ai/crawl/sources 添加。
@@ -313,6 +314,28 @@ COMMENT ON COLUMN documents.review_status IS '审查状态：approved（通过�
 async def ensure_review_status_column() -> None:
     """幂等补 documents 表 review_status 列（与 superseded 同款拆分执行模式）"""
     statements = [s.strip() for s in REVIEW_STATUS_DDL.split(";") if s.strip()]
+    async with async_session_factory() as session:
+        for stmt in statements:
+            await session.execute(text(stmt))
+        await session.commit()
+    async with async_session_factory() as session:
+        for stmt in statements:
+            await session.execute(text(stmt))
+        await session.commit()
+
+
+# documents 表加列 DDL（module-078 审查节点增强）：review_score 质量分落库。
+# 与 review_status 同款 init_db 幂等 ALTER 模式；HHEM 不可用 → NULL（诚实不
+# 编造分数）。存量行 NULL 兼容（HHEM 评分未跑过的历史文档不追填）。
+REVIEW_SCORE_DDL = """
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS review_score FLOAT;
+COMMENT ON COLUMN documents.review_score IS '审查质量分（HHEM score 0-1，NULL=不可用）——module-078';
+"""
+
+
+async def ensure_review_score_column() -> None:
+    """幂等补 documents 表 review_score 列（与 review_status 同款拆分执行模式）"""
+    statements = [s.strip() for s in REVIEW_SCORE_DDL.split(";") if s.strip()]
     async with async_session_factory() as session:
         for stmt in statements:
             await session.execute(text(stmt))

@@ -13,11 +13,12 @@ reflector + factcheck_judge。
 """
 import asyncio
 import logging
+import random
 import re
 import time
 from dataclasses import dataclass, field
 from typing import Optional
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from urllib.parse import urljoin, urlsplit, urlunsplit, urlparse
 
 import httpx
 
@@ -28,9 +29,37 @@ logger = logging.getLogger(__name__)
 # --- 安全常量 ---
 _ALLOWED_SCHEMES = {"http", "https"}
 _FETCH_TIMEOUT_S = 30
-_USER_AGENT = "PersonalKB-Crawler/1.0"
+_ROBOTS_UA = "PersonalKB-Crawler"
 
-# --- 递归抓取常量（module-076） ---
+# --- UA 轮换池（module-077）：~10 个主流桌面+移动浏览器 UA ---
+_BUILTIN_UA_POOL = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 Edg/126.0.0.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+]
+
+# --- 反爬模块级状态（module-077） ---
+_robots_cache: dict[str, tuple[float, object]] = {}  # host → (expire_ts, RobotFileParser)
+_proxy_pool: list[str] = []
+_proxy_index: int = 0
+_last_fetch_time: dict[int, float] = {}  # source_id → monotonic timestamp
+
+
+def _ua_pool() -> list[str]:
+    """返回 UA 列表：配置非空用配置，否则用内置池"""
+    custom = settings.crawl_user_agents
+    if custom:
+        pool = [u.strip() for u in custom.split(",") if u.strip()]
+        if pool:
+            return pool
+    return _BUILTIN_UA_POOL
 _HREF_RE = re.compile(r'href=["\']([^"\']+)')
 _FILENAME_SEGMENT_MAX = 50  # 入库 filename 末段截断长度
 
@@ -53,9 +82,31 @@ class CrawlSummary:
     crawled: int = 0
     approved: int = 0
     rejected: int = 0
+    conflict_count: int = 0  # 检测到矛盾的文档数（module-078，与是否 rejected 独立计数）
     skipped: int = 0
     errors: int = 0
     details: list = field(default_factory=list)
+
+
+class ReviewResult(str):
+    """审查结果（str 子类）：值 == "approved"/"rejected"，另携带结构化审查字段
+
+    module-078 扩展审查节点后，入库/汇总需要 score/conflict 等结构化信息，
+    而 module-075 契约（_review_content 返回 str、与 "approved" 直接比较）
+    必须保持零回归——故用 str 子类桥接：既可直接比较，又可取字段。
+    """
+
+    def __new__(cls, status: str, *, score=None, sufficient: bool = True, conflict: bool = False, conflict_detail: str = "", policy: str = "fail-open", elapsed_ms: int = 0) -> "ReviewResult":
+        """构造 ReviewResult 实例（str 子类桥接，携带结构化审查字段）"""
+        obj = str.__new__(cls, status)
+        obj.status = status
+        obj.score = score
+        obj.sufficient = sufficient
+        obj.conflict = conflict
+        obj.conflict_detail = conflict_detail
+        obj.policy = policy
+        obj.elapsed_ms = elapsed_ms
+        return obj
 
 
 # ─── URL 安全校验 ───
@@ -148,158 +199,379 @@ def _is_blacklisted_url(url: str) -> bool:
 
 
 
+# ─── 反爬辅助函数（module-077）：robots / UA / 代理 / 限速 ───
+
+
+async def _check_robots_allowed(url: str) -> bool:
+    """检查 robots.txt 是否允许抓取该 URL（fail-open：失败/无 robots.txt = 允许）
+
+    缓存策略：按源域名缓存解析结果（dict + TTL），同一域名只拉取一次 robots.txt。
+    robots.txt 本身用 httpx 抓取（带超时），标准库 RobotFileParser 解析。
+
+    Args:
+        url: 目标 URL
+
+    Returns:
+        True = 允许抓取，False = robots.txt 禁止
+    """
+    try:
+        parsed = urlparse(url)
+        host = parsed.hostname or ""
+        if not host:
+            return True
+        now = time.monotonic()
+        ttl = settings.crawl_robots_cache_ttl
+        # 命中缓存且未过期
+        if host in _robots_cache:
+            expire_ts, rp = _robots_cache[host]
+            if ttl <= 0 or now < expire_ts:
+                return rp.can_fetch(_ROBOTS_UA, url)
+        # 拉取 robots.txt
+        scheme = parsed.scheme or "https"
+        robots_url = f"{scheme}://{host}/robots.txt"
+        async with httpx.AsyncClient(timeout=5, follow_redirects=True) as client:
+            resp = await client.get(robots_url)
+            resp.raise_for_status()
+            rp = type(_robots_cache.get(host, (0, None))[1] or _make_robot_parser())()
+            rp.parse(resp.text.splitlines())
+        expire_ts = now + ttl if ttl > 0 else now
+        _robots_cache[host] = (expire_ts, rp)
+        return rp.can_fetch(_ROBOTS_UA, url)
+    except Exception:
+        # fail-open：robots.txt 不存在/超时/网络错误 → 允许抓取
+        return True
+
+
+def _make_robot_parser():
+    """创建 RobotFileParser 实例（延迟导入标准库）"""
+    from urllib.robotparser import RobotFileParser
+    return RobotFileParser()
+
+
+def _pick_ua() -> str:
+    """从 UA 池随机选取一个浏览器 User-Agent"""
+    pool = _ua_pool()
+    return random.choice(pool)
+
+
+def _random_headers() -> dict:
+    """生成带随机 UA 的浏览器风格请求头"""
+    return {
+        "User-Agent": _pick_ua(),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-US;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br",
+    }
+
+
+def _load_proxies() -> list[str]:
+    """从配置加载代理列表"""
+    raw = settings.crawl_proxies
+    return [p.strip() for p in raw.split(",") if p.strip()]
+
+
+def _next_proxy() -> str | None:
+    """Round-robin 返回下一个代理地址，空列表返回 None（直连）"""
+    global _proxy_pool, _proxy_index
+    if not _proxy_pool:
+        _proxy_pool = _load_proxies()
+    if not _proxy_pool:
+        return None
+    proxy = _proxy_pool[_proxy_index % len(_proxy_pool)]
+    _proxy_index += 1
+    return proxy
+
+
+async def _rate_limit_delay(source_id: int) -> None:
+    """per-source 请求间隔限速（_recursive_crawl 每个子链接 fetch 前调用）
+
+    使用 time.monotonic() 单调时钟，不同源独立节奏互不干扰。
+    """
+    delay = settings.crawl_request_delay_seconds
+    if delay <= 0:
+        return
+    last = _last_fetch_time.get(source_id)
+    if last is not None:
+        elapsed = time.monotonic() - last
+        if elapsed < delay:
+            await asyncio.sleep(delay - elapsed)
+    _last_fetch_time[source_id] = time.monotonic()
+
+
 # ─── 审查节点（包装调用，不修改共享源文件） ───
 
 
-async def _review_content(
-    url: str,
-    content: str,
-    title: str,
-) -> str:
-    """抓取内容审查：复用 reflector.check_sufficiency + factcheck_judge
-
-    审查不通过标记 review_status="rejected" 但仍入库（fail-open，不丢数据）。
-    审查节点调用失败时默认 approved（fail-open，不误杀）。
-
-    Args:
-        url: 抓取的 URL
-        content: 抓取到的文本内容
-        title: 页面标题
-
-    Returns:
-        "approved" 或 "rejected"
-    """
-    # Step 1: 充分性检查 —— 用抓取内容模拟"文档"与自身标题比对
-    try:
+async def _review_content(url: str, content: str, title: str) -> ReviewResult:
+    """抓取内容审查：充分性 + HHEM 质量分 + 矛盾检测，按审查策略判定。
+    rejected 仍入库（module-075 契约不变）；返回 ReviewResult（str 子类，
+    == "approved"/"rejected"），携带 score/sufficient/conflict/elapsed_ms。"""
+    t0 = time.perf_counter()
+    policy = settings.crawl_review_policy
+    threshold = settings.crawl_hhem_threshold_strict if policy == "strict" else settings.crawl_hhem_threshold
+    status = "approved"
+    score: Optional[float] = None
+    sufficient = True
+    conflict = False
+    conflict_detail = ""
+    try:  # Step 1: 充分性（复用 reflector，不修改共享源文件）
         from agent.reflector import reflector
         doc_for_review = {"title": title or url, "content": content[:3000]}
-        result = await reflector.check_sufficiency(
-            query=title or url,
-            documents=[doc_for_review],
-        )
-        if not result.get("sufficient", True):
-            logger.info("审查不充分（reflector rejected）: %s", url[:80])
-            return "rejected"
+        result = await reflector.check_sufficiency(query=title or url, documents=[doc_for_review])
+        sufficient = bool(result.get("sufficient", True))
+        if not sufficient:
+            status = "rejected"
     except Exception as e:
-        logger.warning("reflector 审查调用失败，fail-open: %s", e)
+        logger.warning("reflector 审查调用失败: %s", e)
+        if policy == "strict":
+            status = "rejected"
+    if status == "approved":  # Step 2: HHEM 质量分（阈值读 config）
+        try:
+            from rag.retrieval.factcheck_judge import hhem_judge
+            scores = await hhem_judge.predict(docs=[content[:2000]], claims=[title or url])
+            if scores and scores[0] is not None:
+                score = float(scores[0])
+                if score < threshold:
+                    status = "rejected"
+        except Exception as e:
+            logger.warning("factcheck_judge 调用失败: %s", e)
+            if policy == "strict":
+                status = "rejected"
+    conflict_info = await _check_conflict(content)  # Step 3: 矛盾检测（fail-open 仅记录）
+    conflict = bool(conflict_info.get("conflict"))
+    conflict_detail = str(conflict_info.get("detail", ""))
+    if conflict and policy in ("lenient", "strict"):
+        status = "rejected"
+    elapsed_ms = int((time.perf_counter() - t0) * 1000)
+    logger.info("审查完成: url=%s status=%s score=%s sufficient=%s conflict=%s policy=%s elapsed_ms=%d",
+                url[:80], status, score, sufficient, conflict, policy, elapsed_ms)
+    if conflict_detail:
+        logger.info("矛盾命中: %s", conflict_detail)
+    return ReviewResult(status, score=score, sufficient=sufficient, conflict=conflict,
+                        conflict_detail=conflict_detail, policy=policy, elapsed_ms=elapsed_ms)
 
-    # Step 2: 质量打分 —— factcheck_judge 对内容做质量评分
+
+async def _check_conflict(content: str) -> dict:
+    """矛盾检测：embed 新内容 → 根父块向量候选 → memory_conflict_judge 判定
+
+    任一环节失败 / 未启用（memory_conflict_enabled=false）→
+    {"conflict": False, "detail": ""}（fail-open，不阻断入库主链路）。
+
+    Args:
+        content: 抓取内容（embed 取前 500 字符，判定 hypothesis 取前 2000）
+
+    Returns:
+        {"conflict": bool, "detail": str}；detail 含候选文档 id/标题/判定器
+    """
+    if not settings.memory_conflict_enabled:
+        return {"conflict": False, "detail": ""}
     try:
-        from rag.retrieval.factcheck_judge import hhem_judge
-        scores = await hhem_judge.predict(
-            docs=[content[:2000]],
-            claims=[title or url],
-        )
-        if scores and scores[0] < 0.3:
-            logger.info("审查质量低（factcheck score=%.3f）: %s", scores[0], url[:80])
-            return "rejected"
+        from rag.retrieval.embeddings import embedding_service
+        vec = await embedding_service.embed_text(content[:500])
+        if not vec:
+            return {"conflict": False, "detail": "嵌入失败"}
+        candidates = await _conflict_candidates(vec)
+        mode = settings.memory_conflict_judge
+        for cand in candidates:
+            hit, judge_used = await _judge_conflict(
+                cand["content"], content[:2000], mode)
+            if hit:
+                detail = (f"与库中文档 id={cand['id']} 标题={cand['title']!r} "
+                          f"矛盾（判定器={judge_used}）")
+                return {"conflict": True, "detail": detail}
+        return {"conflict": False, "detail": ""}
     except Exception as e:
-        logger.warning("factcheck_judge 调用失败，fail-open: %s", e)
+        logger.warning("矛盾检测失败，fail-open 跳过: %s", e)
+        return {"conflict": False, "detail": ""}
 
-    return "approved"
+
+async def _conflict_candidates(vec: list[float]) -> list[dict]:
+    """向量查询根父块候选：cosine ≥ crawl_conflict_min_cosine，top-K
+
+    pgvector 余弦距离 <=>（距离 = 1 - cosine），embedding 字符串绑定对齐
+    retriever._vector_search 先例（规避 asyncpg 类型编解码）。
+
+    Args:
+        vec: 新内容向量（L2 归一化）
+
+    Returns:
+        [{"id", "title", "content"}]，按 cosine 降序
+    """
+    from sqlalchemy import text
+    from src.database import async_session_factory
+    vec_str = f"[{','.join(str(v) for v in vec)}]"
+    sql = text("""
+        SELECT id, title, content, 1 - (embedding <=> :vec) AS cosine
+        FROM documents
+        WHERE parent_id IS NULL AND embedding IS NOT NULL
+        ORDER BY embedding <=> :vec ASC
+        LIMIT :k
+    """)
+    async with async_session_factory() as session:
+        rows = (await session.execute(
+            sql, {"vec": vec_str, "k": settings.crawl_conflict_top_k})).fetchall()
+    min_cosine = settings.crawl_conflict_min_cosine
+    return [
+        {"id": r[0], "title": r[1], "content": r[2]}
+        for r in rows if float(r[3]) >= min_cosine
+    ]
+
+
+async def _judge_conflict(premise: str, hypothesis: str, mode: str) -> tuple[bool, str]:
+    """按 memory_conflict_judge 判矛盾：nli/clf 单判，dual 双确认 + 对称回退
+
+    Args:
+        premise: 库中候选文档内容
+        hypothesis: 新抓取内容
+        mode: settings.memory_conflict_judge 值（nli / clf / dual）
+
+    Returns:
+        (是否矛盾, 实际使用的判定器)；判定器不可用 → (False, 判定器名)（fail-open）
+    """
+    if mode == "nli":
+        return bool(await _nli_contradicts(premise, hypothesis)), "nli"
+    if mode == "clf":
+        return bool(await _clf_contradicts(premise, hypothesis)), "clf"
+    # dual：双确认 contradiction 才判矛盾；任一不可用 → 另一单判（对称回退）
+    nli_hit = await _nli_contradicts(premise, hypothesis)
+    clf_hit = await _clf_contradicts(premise, hypothesis)
+    if nli_hit is not None and clf_hit is not None:
+        return nli_hit and clf_hit, "dual"
+    if nli_hit is not None:
+        return nli_hit, "nli"
+    if clf_hit is not None:
+        return clf_hit, "clf"
+    return False, "dual"
+
+
+async def _nli_contradicts(premise: str, hypothesis: str) -> Optional[bool]:
+    """nli_judge 判定是否矛盾（三分类，contradiction → True；不可用 → None）"""
+    try:
+        from rag.memory.nli_judge import nli_judge
+        result = await nli_judge.predict(premise=premise, hypothesis=hypothesis)
+        return result == "contradiction" if result else None
+    except Exception as e:
+        logger.warning("nli 判定失败（fail-open None）: %s", e)
+        return None
+
+
+async def _clf_contradicts(premise: str, hypothesis: str) -> Optional[bool]:
+    """memory_conflict_clf 判定是否矛盾（二分类，contradiction → True；不可用 → None）"""
+    try:
+        from rag.memory.memory_conflict_clf import memory_conflict_clf
+        await memory_conflict_clf.load()
+        result = await memory_conflict_clf.predict(premise=premise, hypothesis=hypothesis)
+        return result == "contradiction" if result else None
+    except Exception as e:
+        logger.warning("clf 判定失败（fail-open None）: %s", e)
+        return None
 
 
 # ─── 单页抓取 ───
 
+def _extract_title_from_html(text: str) -> str:
+    """从 HTML 提取 <title> 标签内容（截断 200 字符）"""
+    lower = text.lower()
+    start = lower.find("<title>")
+    if start == -1:
+        return ""
+    end = lower.find("</title>", start)
+    if end == -1:
+        return ""
+    return text[start + 7 : end].strip()[:200]
 
 async def fetch_page(url: str) -> CrawlResult:
-    """抓取单个 URL 内容
-
-    Args:
-        url: 目标 URL（必须为 http/https）
-
-    Returns:
-        CrawlResult 含 content/title 或 error
-    """
+    """抓取单个 URL（UA 轮换 + 代理轮换 + 429/5xx 退避重试）"""
     if not _is_safe_url(url):
         return CrawlResult(url=url, success=False, error="不安全的 URL 协议")
-
-    try:
-        async with httpx.AsyncClient(
-            timeout=_FETCH_TIMEOUT_S,
-            follow_redirects=True,
-            headers={"User-Agent": _USER_AGENT},
-        ) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-            content_type = resp.headers.get("content-type", "")
-            text = resp.text
-            # 简单标题提取（<title> 标签）
-            title = ""
-            lower = text.lower()
-            start = lower.find("<title>")
-            if start != -1:
-                end = lower.find("</title>", start)
-                if end != -1:
-                    title = text[start + 7 : end].strip()[:200]
-            return CrawlResult(url=url, success=True, content=text, title=title)
-    except httpx.TimeoutException:
-        return CrawlResult(url=url, success=False, error="抓取超时（>30s）")
-    except httpx.HTTPStatusError as e:
-        return CrawlResult(url=url, success=False, error=f"HTTP {e.response.status_code}")
-    except Exception as e:
-        return CrawlResult(url=url, success=False, error=str(e)[:200])
-
+    max_retries = settings.crawl_retry_max
+    base_delay = settings.crawl_retry_base_seconds
+    last_error = ""
+    for attempt in range(max_retries + 1):
+        kw: dict = {"timeout": _FETCH_TIMEOUT_S, "follow_redirects": True,
+                    "headers": _random_headers()}
+        proxy = _next_proxy()
+        if proxy:
+            kw["proxy"] = proxy
+        try:
+            async with httpx.AsyncClient(**kw) as client:
+                resp = await client.get(url)
+                if resp.status_code == 429 or resp.status_code >= 500:
+                    last_error = f"HTTP {resp.status_code}"
+                    if attempt < max_retries:
+                        delay = base_delay * (2 ** attempt)
+                        await asyncio.sleep(delay + random.uniform(0, delay * 0.5))
+                        continue
+                    return CrawlResult(url=url, success=False, error=last_error)
+                resp.raise_for_status()
+                return CrawlResult(url=url, success=True, content=resp.text,
+                                   title=_extract_title_from_html(resp.text))
+        except httpx.TimeoutException:
+            if attempt < max_retries:
+                continue
+            return CrawlResult(url=url, success=False,
+                               error=f"抓取超时（>{_FETCH_TIMEOUT_S}s）")
+        except httpx.HTTPStatusError as e:
+            return CrawlResult(url=url, success=False,
+                               error=f"HTTP {e.response.status_code}")
+        except Exception as e:
+            last_error = str(e)[:200]
+            if attempt < max_retries:
+                continue
+            return CrawlResult(url=url, success=False, error=last_error)
+    return CrawlResult(url=url, success=False, error=last_error or "重试用尽")
 
 # ─── 递归抓取引擎（module-076） ───
 
 
 async def _crawl_page_and_store(url: str, summary: CrawlSummary) -> list[str]:
-    """抓取单页 → 审查 → 入库 → 提取子链接（单页 fail-open）
-
-    Args:
-        url: 规范化后的 URL
-        summary: 批次汇总（累计计数与详情）
-
-    Returns:
-        子链接列表（供上层递归展开；单页失败不影响其他页面）
-    """
+    """抓取单页→审查→入库→提取子链接（fail-open，robots/限速前置）"""
+    # module-077: robots.txt 检查（fail-open：检查失败允许继续）
+    if not await _check_robots_allowed(url):
+        logger.info("robots.txt 禁止抓取，跳过: %s", url[:80])
+        summary.skipped += 1
+        summary.details.append({"url": url, "status": "robots_blocked"})
+        return []
+    # module-077: per-source 限速（使用 source_id=0 作为全局计数器）
+    await _rate_limit_delay(0)
     result = await fetch_page(url)
     if not result.success:
         logger.warning("递归抓取失败: %s — %s", url[:80], result.error)
         summary.errors += 1
         summary.details.append({"url": url, "status": "error", "error": result.error})
         return []
-
     try:
         review = await _review_content(url, result.content, result.title)
     except Exception as e:
         logger.warning("审查调用异常，fail-open approved: %s — %s", url[:80], e)
         review = "approved"
-
+    review_status = str(review)
+    review_score = getattr(review, "score", None)
+    conflict = bool(getattr(review, "conflict", False))
     try:
         from rag.retrieval.document_ingest import ingest_document
         ingest_result = await ingest_document(
-            data=result.content.encode("utf-8"),
-            filename=_crawl_filename(url),
-            title=result.title or url,
-            source=f"crawl:{url}",
-            review_status=review,
-        )
+            data=result.content.encode("utf-8"), filename=_crawl_filename(url),
+            title=result.title or url, source=f"crawl:{url}",
+            review_status=review_status, review_score=review_score)
         summary.crawled += 1
-        if review == "approved":
+        if review_status == "approved":
             summary.approved += 1
         else:
             summary.rejected += 1
-        summary.details.append({"url": url, "status": "ok", "review": review, "doc_id": ingest_result.get("id")})
-        logger.info("递归入库成功: %s (doc_id=%s, review=%s)", url[:80], ingest_result.get("id"), review)
+        if conflict:
+            summary.conflict_count += 1
+        summary.details.append({"url": url, "status": "ok", "review": review_status,
+                                "review_score": review_score, "conflict": conflict,
+                                "doc_id": ingest_result.get("id")})
+        logger.info("递归入库成功: %s (doc_id=%s, review=%s, score=%s, conflict=%s)",
+                    url[:80], ingest_result.get("id"), review_status, review_score, conflict)
     except Exception as e:
         logger.warning("递归入库失败: %s — %s", url[:80], e)
         summary.errors += 1
         summary.details.append({"url": url, "status": "ingest_error", "error": str(e)[:200]})
-
     return _extract_links(result.content, url, settings.crawl_max_links_per_page)
 
-
-async def _recursive_crawl(
-    url: str,
-    depth: int,
-    max_depth: int,
-    whitelist: list[str],
-    visited: set[str],
-    limit: int,
-    summary: CrawlSummary,
-) -> None:
+async def _recursive_crawl(url: str, depth: int, max_depth: int, whitelist: list[str], visited: set[str], limit: int, summary: CrawlSummary) -> None:
     """递归抓取：深度控制 + 白/黑名单 + visited 去重 + 总页数上限
 
     Args:
@@ -329,12 +601,7 @@ async def _recursive_crawl(
     for link in child_links:
         await _recursive_crawl(link, depth + 1, max_depth, whitelist, visited, limit, summary)
 
-
-async def run_crawl(
-    sources: list[dict],
-    *,
-    max_pages: int = 0,
-) -> CrawlSummary:
+async def run_crawl(sources: list[dict], *, max_pages: int = 0) -> CrawlSummary:
     """执行一次抓取批次（受控递归：深度 + 去重 + 过滤 + 总页数上限）
 
     Args:
@@ -351,7 +618,6 @@ async def run_crawl(
     limit = max_pages or settings.crawl_max_pages_per_run
     summary = CrawlSummary()
     visited: set[str] = set()
-
 
     for src in sources:
         url_pattern = src.get("url_pattern", "")
@@ -378,7 +644,6 @@ async def run_crawl(
         summary.errors, summary.skipped,
     )
     return summary
-
 
 # ─── APScheduler 调度器 ───
 

@@ -349,7 +349,36 @@ class Settings(BaseSettings):
     crawl_max_depth: int = 2
     crawl_blacklist_patterns: str = ""
     crawl_max_links_per_page: int = 20
+    # 审查节点增强（module-078 / ADR-0019 阶段2）：
+    #   crawl_review_policy —— 审查策略三档：fail-open（默认，module-075 零回归：
+    #     审查异常/矛盾命中仅记录不改变 status）/ lenient（矛盾命中 rejected，异常
+    #     仍放行）/ strict（fail-closed：审查异常 rejected + 阈值更严）。
+    #     PW_CRAWL_REVIEW_POLICY 切换，Literal 校验非法值启动即抛 ValidationError。
+    #   crawl_hhem_threshold —— HHEM 质量分拒绝阈值（0.3 = module-075 硬编码值，
+    #     零回归）；crawl_hhem_threshold_strict —— strict 档更严阈值（0.45）。
+    #   crawl_conflict_top_k / crawl_conflict_min_cosine —— 矛盾候选向量查询参数：
+    #     根父块 top-K + cosine 下限过滤（不相干文档无矛盾语义，过滤防误报）。
+    crawl_review_policy: Literal["fail-open", "lenient", "strict"] = "fail-open"
+    crawl_hhem_threshold: float = 0.3
+    crawl_hhem_threshold_strict: float = 0.45
+    crawl_conflict_top_k: int = 3
+    crawl_conflict_min_cosine: float = 0.6
 
+    # 反爬绕过 + 代理池（module-077 / ADR-0019 阶段2 第三片）：
+    #   crawl_request_delay_seconds —— 同源请求间隔（秒），_recursive_crawl 每个
+    #     子链接 fetch 前 await asyncio.sleep，防频率封禁。0 = 不限速。
+    #   crawl_retry_max —— 429/5xx 指数退避最大重试次数（0 = 不重试）。
+    #   crawl_retry_base_seconds —— 重试退避基础延迟（秒），实际 = base × 2^attempt + jitter。
+    #   crawl_proxies —— 逗号分隔 HTTP 代理列表（http://host:port），空 = 直连。
+    #     round-robin 轮换，失败自动切下一个，全部失败 → fail-open 直连。
+    #   crawl_robots_cache_ttl —— robots.txt 解析结果缓存 TTL（秒），0 = 不缓存。
+    #   crawl_user_agents —— 逗号分隔自定义 UA 列表，空 = 使用内置 ~10 个浏览器 UA 池。
+    crawl_request_delay_seconds: float = 1.0
+    crawl_retry_max: int = 3
+    crawl_retry_base_seconds: float = 2.0
+    crawl_proxies: str = ""
+    crawl_robots_cache_ttl: int = 3600
+    crawl_user_agents: str = ""
 
     model_config = {"env_prefix": "PW_", "env_file": ".env"}
 

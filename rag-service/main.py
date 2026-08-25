@@ -1122,6 +1122,7 @@ async def trigger_crawl():
             "rejected": summary.rejected,
             "errors": summary.errors,
             "skipped": summary.skipped,
+            "conflict": summary.conflict_count,
         },
     }
 

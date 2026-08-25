@@ -113,6 +113,12 @@ class Document(Base):
         String(16), nullable=False, default="approved",
         comment="审查状态：approved（通过）/ rejected（不通过，仍入库可复核）——module-075"
     )
+    # module-078 审查节点增强：review_score 审查质量分（HHEM score 0-1）。
+    # HHEM 不可用 → NULL（诚实不编造分数）；存量行 NULL 兼容（不追填）。
+    review_score = Column(
+        Float, nullable=True,
+        comment="审查质量分（HHEM score 0-1，NULL=不可用）——module-078"
+    )
 
     def __repr__(self) -> str:
         return f"<Document id={self.id} title={self.title!r} source={self.source!r}>"
