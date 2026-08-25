@@ -268,6 +268,8 @@ async def init_db():
     logger.info("source_configs 表已就绪（module-075）")
     await ensure_review_status_column()
     logger.info("documents 表 review_status 列已就绪（module-075）")
+    await ensure_max_depth_column()
+    logger.info("source_configs 表 max_depth 列已就绪（module-076）")
 
 
 # source_configs 表 DDL（module-075 知识抓取流水线）：crawl 来源配置表。
@@ -315,6 +317,25 @@ async def ensure_review_status_column() -> None:
         for stmt in statements:
             await session.execute(text(stmt))
         await session.commit()
+
+
+# source_configs 表加列 DDL（module-076 递归爬取）：max_depth 单源最大抓取深度。
+# 默认 1（种子+一层链接），0=仅种子（等价 module-075 单页），2+=更深。
+# 幂等 ALTER 对齐 superseded/review_status 同款模式。
+CRAWL_DEPTH_DDL = """
+ALTER TABLE source_configs ADD COLUMN IF NOT EXISTS max_depth INTEGER NOT NULL DEFAULT 1;
+COMMENT ON COLUMN source_configs.max_depth IS '单源最大抓取深度（0=仅种子，1=种子+一层，默认1）——module-076';
+"""
+
+
+async def ensure_max_depth_column() -> None:
+    """幂等补 source_configs 表 max_depth 列（module-076）"""
+    statements = [s.strip() for s in CRAWL_DEPTH_DDL.split(";") if s.strip()]
+    async with async_session_factory() as session:
+        for stmt in statements:
+            await session.execute(text(stmt))
+        await session.commit()
+
 
 
 

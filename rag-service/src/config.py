@@ -342,6 +342,14 @@ class Settings(BaseSettings):
     crawl_interval_minutes: int = 1440
     crawl_max_pages_per_run: int = 10
 
+    # 递归爬取（module-076）：深度控制 + 黑名单 + 单页链接上限
+    # crawl_max_depth —— 全局深度上限（min(source.max_depth, crawl_max_depth) 生效）
+    # crawl_blacklist_patterns —— 逗号分隔 URL 前缀黑名单（PW_CRAWL_BLACKLIST_PATTERNS）
+    # crawl_max_links_per_page —— 单页提取链接数上限（防导航页爆量）
+    crawl_max_depth: int = 2
+    crawl_blacklist_patterns: str = ""
+    crawl_max_links_per_page: int = 20
+
 
     model_config = {"env_prefix": "PW_", "env_file": ".env"}
 

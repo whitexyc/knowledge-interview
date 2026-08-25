@@ -1036,7 +1036,11 @@ async def delete_document(doc_id: int):
     return {"code": 0, "message": f"成功移除 {removed_count} 条记录"}
 
 
-# ─── 知识抓取流水线端点（module-075） ───
+# ─── 知识抓取流水线端点（module-075 / module-076） ───
+
+
+CRAWL_DEPTH_API_MAX = 5  # 抓取深度 API 校验上限（module-076，<0 或 >5 返回 code=1）
+
 
 
 class CrawlSourceRequest(BaseModel):
@@ -1045,29 +1049,36 @@ class CrawlSourceRequest(BaseModel):
     Attributes:
         url_pattern: URL 前缀模式（如 https://spring.io/docs）
         name: 人类可读名称（可选）
+        max_depth: 最大抓取深度（0-5，默认 1；0=仅种子页，module-076）
     """
     url_pattern: str
     name: str = ""
+    max_depth: int = 1
+
 
 
 @app.post("/ai/crawl/sources")
 async def add_crawl_source(req: CrawlSourceRequest):
-    """添加抓取源配置"""
+    """添加抓取源配置（max_depth：0=仅种子页，1=种子+一层，2-5 更深）"""
     if not req.url_pattern.strip():
         return {"code": 1, "msg": "url_pattern 不能为空"}
     if not req.url_pattern.lower().startswith(("http://", "https://")):
         return {"code": 1, "msg": "url_pattern 必须以 http:// 或 https:// 开头"}
+    if not 0 <= req.max_depth <= CRAWL_DEPTH_API_MAX:
+        return {"code": 1, "msg": f"max_depth 取值范围 0-{CRAWL_DEPTH_API_MAX}"}
 
     from sqlalchemy import text
     async with async_session_factory() as session:
         await session.execute(
-            text("INSERT INTO source_configs (url_pattern, name) VALUES (:url, :name)"),
-            {"url": req.url_pattern.strip(), "name": req.name.strip()},
+            text("INSERT INTO source_configs (url_pattern, name, max_depth) VALUES (:url, :name, :depth)"),
+            {"url": req.url_pattern.strip(), "name": req.name.strip(), "depth": req.max_depth},
         )
         await session.commit()
 
-    logger.info("添加抓取源: %s (%s)", req.name, req.url_pattern[:80])
-    return {"code": 0, "msg": "success", "data": {"url_pattern": req.url_pattern, "name": req.name}}
+    logger.info("添加抓取源: %s (%s, max_depth=%d)", req.name, req.url_pattern[:80], req.max_depth)
+    return {"code": 0, "msg": "success", "data": {"url_pattern": req.url_pattern, "name": req.name, "max_depth": req.max_depth}}
+
+
 
 
 @app.get("/ai/crawl/sources")
@@ -1076,15 +1087,15 @@ async def list_crawl_sources():
     from sqlalchemy import text
     async with async_session_factory() as session:
         result = await session.execute(
-            text("SELECT id, url_pattern, name, enabled, last_crawled_at, created_at FROM source_configs ORDER BY id")
+            text("SELECT id, url_pattern, name, enabled, max_depth, last_crawled_at, created_at FROM source_configs ORDER BY id")
         )
         rows = result.fetchall()
         sources = [
             {
                 "id": r[0], "url_pattern": r[1], "name": r[2],
-                "enabled": r[3],
-                "last_crawled_at": r[4].isoformat() if r[4] else None,
-                "created_at": r[5].isoformat() if r[5] else None,
+                "enabled": r[3], "max_depth": r[4],
+                "last_crawled_at": r[5].isoformat() if r[5] else None,
+                "created_at": r[6].isoformat() if r[6] else None,
             }
             for r in rows
         ]
