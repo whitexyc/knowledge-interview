@@ -39,6 +39,7 @@ class EmbeddingException(Exception):
     """嵌入服务异常"""
 
     def __init__(self, message: str, cause: Optional[Exception] = None):
+        """初始化嵌入异常，可携带原因"""
         super().__init__(message)
         self.__cause__ = cause
 
@@ -47,6 +48,7 @@ class EmbeddingService:
     """文本嵌入服务（本地 bge-m3 GGUF，异步包装）"""
 
     def __init__(self, model_path: str = ""):
+        """初始化嵌入服务（延迟加载模型）"""
         self._model_path = model_path or _LOCAL_MODEL_DIR
         self._model = None
         self._dim = 1024  # bge-m3 固定 1024 维
@@ -70,6 +72,7 @@ class EmbeddingService:
             raise EmbeddingException(f"嵌入模型文件为空(0字节): {self._model_path}")
 
     def _lazy_load(self):
+        """延迟加载本地 GGUF 嵌入模型（首次调用时初始化）"""
         if self._model is None:
             self._validate_model_file()
             logger.info("加载本地嵌入模型: %s", self._model_path)
@@ -119,6 +122,7 @@ class EmbeddingService:
         return arr.tolist()
 
     async def embed_text(self, text: str) -> list[float]:
+        """异步嵌入单条文本（to_thread 包装同步推理）"""
         if not text or not text.strip():
             raise EmbeddingException("嵌入文本不能为空")
         try:
@@ -129,6 +133,7 @@ class EmbeddingService:
             raise EmbeddingException("嵌入服务暂不可用", cause=e)
 
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        """异步批量嵌入文本列表（to_thread 包装同步推理）"""
         if not texts:
             return []
         valid = [t for t in texts if t and t.strip()]

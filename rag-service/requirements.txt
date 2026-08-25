@@ -47,4 +47,7 @@ mcp==1.26.0
 # AGPL-3.0 许可（与 PyMuPDF 同许可）。个人学习项目无影响；商业化时换
 # pypdfium2（Apache-2.0）替代。不加版本锁——跟踪 pymupdf 主版本。
 pymupdf4llm
+# 知识抓取流水线（module-075 / ADR-0019 阶段2）：APScheduler 定时调度库，
+# 支持 AsyncIOScheduler + IntervalTrigger，轻量级无重依赖。
+apscheduler==3.10.4
 

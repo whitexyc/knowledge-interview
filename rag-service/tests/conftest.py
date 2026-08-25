@@ -223,3 +223,16 @@ def default_rewrite_switches_disabled(monkeypatch):
 
     monkeypatch.setattr(settings, "query_rewrite_enabled", False)
     monkeypatch.setattr(settings, "contextual_rewrite_enabled", False)
+
+
+@pytest.fixture(autouse=True)
+def default_crawl_disabled(monkeypatch):
+    """测试环境统一钉住抓取功能开关=关闭（module-075，对齐 056/058 模式）
+
+    生产默认已关闭（PW_CRAWL_ENABLED 默认 false），但显式钉住是"存量测试
+    全绿"的双重保证。新测试（test_crawler.py）体内显式 setattr True 验证。
+    """
+    from src.config import settings
+
+    monkeypatch.setattr(settings, "crawl_enabled", False)
+

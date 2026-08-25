@@ -333,6 +333,16 @@ class Settings(BaseSettings):
     #   （document_cleaner.clean()）——pymupdf4llm 解决结构，清洗层解决格式噪声。
     pdf_fallback_md: bool = True
 
+    # 知识抓取流水线（module-075 / ADR-0019 阶段2）：
+    #   crawl_enabled —— 抓取功能总开关（false 时不启动调度器 + run_crawl 直接返回空）。
+    #   crawl_interval_minutes —— 定时抓取间隔（默认 1440=24h，config 可调）。
+    #   crawl_max_pages_per_run —— 单次抓取最大页数上限（防失控）。
+    # 测试环境由 conftest autouse fixture 钉住 crawl_enabled=false（hermetic）。
+    crawl_enabled: bool = False
+    crawl_interval_minutes: int = 1440
+    crawl_max_pages_per_run: int = 10
+
+
     model_config = {"env_prefix": "PW_", "env_file": ".env"}
 
 

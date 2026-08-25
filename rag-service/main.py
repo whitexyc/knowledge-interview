@@ -101,60 +101,36 @@ async def load_fallback_chain_from_redis() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期管理"""
+    """应用生命周期管理：校验 → 预热 → MCP 任务组 → yield → 清理"""
     logger.info("AI 服务启动中...")
-
-    # module-032: JWT 共享密钥必须配置（与 Java 端一致，走 .env，不进仓库）。
-    # 缺失时明确报错启动失败，不静默运行无认证状态（plan §3.4）。
     if not settings.jwt_secret:
-        raise RuntimeError(
-            "JWT_SECRET 未配置：请在 .env 设置 PW_JWT_SECRET（与 Java application.yml 同值）"
-        )
-
-    # module-067: MCP HTTP 模式 fail-closed —— PW_MCP_TOKEN 未配置拒绝启动
-    #（宁可不用不能裸奔；stdio 本地模式零认证是设计，不受影响）。
-    # 放 lifespan 不放 import 期（存量测试全量 import main，import 期 raise 全炸；
-    # 测试用 ASGITransport 不触发 lifespan，零影响）。
+        raise RuntimeError("JWT_SECRET 未配置：请在 .env 设置 PW_JWT_SECRET")
     if not settings.mcp_token:
-        raise RuntimeError(
-            "PW_MCP_TOKEN 未设置：MCP HTTP 模式 fail-closed 拒绝启动（请在 .env 配置）"
-        )
-
+        raise RuntimeError("PW_MCP_TOKEN 未设置：MCP HTTP 模式 fail-closed 拒绝启动")
     await init_db()
-
-    # 预热 embedding 模型 + LLM 客户端，避免首次请求卡顿
+    # 预热 embedding + LLM 降级链 + Qwen/Zhipu
     from rag.retrieval.embeddings import embedding_service
     logger.info("预热 embedding 模型中...")
     await embedding_service.embed_text("warmup")
     logger.info("embedding 模型已就绪")
-
     from llm.client import LLMFactory
-    # 先加载 Redis 中持久化的降级链（module-029），无则用配置默认，
-    # 确保后续 LLM 预热/调用都使用最新顺序
     await load_fallback_chain_from_redis()
     logger.info("预热 LLM 客户端...")
     try:
-        LLMFactory.get_client()  # 触发默认 provider（fallback 降级链）
+        LLMFactory.get_client()
         logger.info("LLM 客户端已预热 (default/fallback)")
     except Exception as e:
         logger.warning("LLM 客户端预热失败（可接受）: %s", e)
-
-    # 预热 Qwen + Zhipu（ModelScope 降级链的前两环），避免首次调用冷启动
     for label, provider in [("Qwen", "qwen"), ("ZhipuAI GLM", "zhipu")]:
         try:
             LLMFactory.get_client(provider)
             logger.info("%s 客户端已预热", label)
         except Exception as e:
             logger.warning("%s 预热失败（可接受）: %s", label, e)
-
-    # module-055: 后台预热 HHEM 裁判模型（fail-soft，不阻塞启动）。
-    # 依据（changelog 实测）：冷加载独立进程 ≈9s、服务进程（CPU 争用）≈17-19s，
-    # 首请求 verify 的 20s 预算内"加载+推理"超时 → verified_claims=0（E2E 复现）；
-    # 预热后 predict 纯推理（实测 0.11-0.5s/对）。后台任务通常先于首个验证请求
-    # 完成；失败仅告警（首次验证请求退回冷加载路径，与无预热行为一致）。
+    # 后台预热 HHEM（fail-soft）+ 阻塞预热 reranker
     import asyncio as _asyncio
-
     async def _warmup_hhem() -> None:
+        """后台预热 HHEM 裁判模型（fail-soft，不阻塞启动）"""
         try:
             from rag.retrieval.factcheck_judge import hhem_judge
             scores = await hhem_judge.predict(["warmup"], ["warmup"])
@@ -162,15 +138,8 @@ async def lifespan(app: FastAPI):
                 logger.info("HHEM 裁判模型已预热")
         except Exception as e:
             logger.warning("HHEM 预热失败（可接受，首个验证请求将含冷加载）: %s", e)
-
     global _HHEM_WARMUP_TASK
     _HHEM_WARMUP_TASK = _asyncio.create_task(_warmup_hhem())
-
-    # P3 性能优化：预热 reranker（int8 量化后首次加载约 20-30s），首个请求不再
-    # 冷加载 20s（TTFT 最大头之一）。与 HHEM 后台 fail-soft 不同，reranker 在
-    # 首个 chat/search 请求的同步关键路径上，故**阻塞启动**等待就绪；失败
-    # fail-open（首个请求退回冷加载路径，与无预热行为一致）。CPU 密集加载挪到
-    # 线程池，不阻塞事件循环。
     try:
         from rag.retrieval.reranker import reranker as _reranker
         logger.info("预热 reranker 模型中...")
@@ -178,17 +147,16 @@ async def lifespan(app: FastAPI):
         logger.info("reranker 模型已预热")
     except Exception as e:
         logger.warning("reranker 预热失败（可接受，首个请求将含冷加载）: %s", e)
-
-    # module-067: MCP Streamable HTTP 会话任务组——Starlette Mount 不转发
-    # lifespan scope 给挂载子应用，手动进入（等价 FastMCP 独立 uvicorn 运行
-    # 的 lifespan；不初始化则每个 /ai/mcp 请求抛 "Task group is not
-    # initialized"，见 mcp_server.mcp_http_lifespan）
+    # MCP 任务组 + 抓取调度器
+    from rag.crawl.crawler import start_scheduler, shutdown_scheduler
+    start_scheduler()
     mcp_http_ctx = mcp_http_lifespan()
     await mcp_http_ctx.__aenter__()
     try:
         yield
     finally:
         await mcp_http_ctx.__aexit__(None, None, None)
+        shutdown_scheduler()
     logger.info("AI 服务关闭")
 
 
@@ -261,6 +229,7 @@ def _mcp_auth_middleware(mcp_app):
     比较用 hmac.compare_digest（常量时间，防时序侧信道）。
     """
     async def auth_wrapper(scope, receive, send):
+        """MCP HTTP 认证中间件（token 常量时间比较）"""
         if scope["type"] != "http":
             await mcp_app(scope, receive, send)
             return
@@ -294,8 +263,7 @@ def save_messages_to_session(client_ip: str, user_msg: str, assistant_msg: str, 
 
 
 # ─── 请求观测落库（module-058 WP-C 可观测性） ───
-def persist_request_log(fastapi_req: Request, endpoint: str, intent: str = "",
-                        error: bool = False) -> None:
+def persist_request_log(fastapi_req: Request, endpoint: str, intent: str = "", error: bool = False) -> None:
     """请求结束异步落库 request_logs（fire-and-forget，fail-open 不阻塞响应）
 
     观测数据来自请求上下文（中间件初始化的 trace_id + 引擎/重排/LLM 客户端
@@ -325,8 +293,7 @@ def persist_request_log(fastapi_req: Request, endpoint: str, intent: str = "",
     asyncio.create_task(observability.save_request_log(record))
 
 
-def schedule_stream_persist(intent: str, query: str, answer: str,
-                            identity: str, history: list) -> None:
+def schedule_stream_persist(intent: str, query: str, answer: str, identity: str, history: list) -> None:
     """chat_stream 生成结束后异步触发长期记忆自动写入（module-033，fire-and-forget）
 
     仅 intent=knowledge 且 answer 非空时触发（闲聊/实时不提取，省成本避免存垃圾）。
@@ -487,6 +454,165 @@ async def chat(request: ChatRequest, fastapi_req: Request):
     return result
 
 
+
+
+
+async def _stream_retrieve_rerank_reflect(request, identity, _t):
+    """检索 + 重排 + 反思步骤（从 _chat_stream_events 提取）"""
+    t0 = _t()
+    docs = await rag_engine._retrieve(request.query, top_k=20, history=request.history)
+    observability.timing("retrieve", _t() - t0)
+    suspected_misclassify, top1_abs = rag_engine._check_suspected_misclassify(docs)
+    previews = []
+    for d in docs:
+        if len(previews) < 5:
+            previews.append({"title": d.get("title", ""), "snippet": d.get("content", "")[:80], "score": round(d.get("hybrid_score", 0), 3)})
+    yield {"_step": "retrieval", "count": len(docs), "previews": previews, "top_abs": top1_abs, "suspected": suspected_misclassify, "t0": t0}
+    if not docs:
+        yield {"_no_docs": True}
+        return
+    t0 = _t()
+    rerank_before = len(docs)
+    docs = await rag_engine._rerank(request.query, docs)
+    observability.timing("rerank", _t() - t0)
+    yield {"_step": "rerank", "before": rerank_before, "after": len(docs), "t0": t0}
+    t0 = _t()
+    from agent.reflector import reflector
+    check = await reflector.check_sufficiency(request.query, docs)
+    observability.timing("reflection", _t() - t0)
+    reflection_data = {"sufficient": check.get("sufficient", True), "reason": check.get("reason", "")}
+    if not check.get("sufficient", True) and check.get("rewritten_query"):
+        reflection_data["rewritten_query"] = check["rewritten_query"]
+    yield {"_step": "reflection", "data": reflection_data, "t0": t0}
+    yield {"_docs": docs}
+
+
+
+def _build_step_event(step_name, data, timing_ms):
+    """构建 SSE step 事件字符串（纯函数，零副作用）"""
+    return f"event: step\ndata: {json.dumps({'step': step_name, 'data': data, 'timing_ms': timing_ms})}\n\n"
+
+
+def _build_done_event(sources, verified=False, **extra):
+    """构建 SSE done 事件字符串"""
+    payload = {"sources": sources, "verified": verified, **extra}
+    return f"event: done\ndata: {json.dumps(payload)}\n\n"
+
+
+def _extract_sources(docs, limit=5):
+    """从 docs 列表提取前 limit 条引用源"""
+    return [{"id": d.get("id"), "title": d.get("title", ""), "content": d.get("content", "")[:300], "source": d.get("source", ""), "ref_index": i + 1} for i, d in enumerate(docs[:limit])]
+
+
+async def _stream_generate_verify(request, fastapi_req, identity, intent, _t, docs):
+    """生成→验证 SSE 事件序列"""
+    from agent.reflector import reflector
+    memory = await rag_engine._recall_memory(request.query, identity)
+    history = await rag_engine._resolve_session_history(identity, request.history)
+    answer_parts, gen_t0, total_len = [], _t(), 0
+    async for token in reflector.generate_answer_stream(request.query, docs, history=history, memory=memory):
+        answer_parts.append(token); total_len += len(token)
+        yield f"event: token\ndata: {json.dumps(token)}\n\n"
+        if total_len >= MAX_ANSWER_LEN:
+            answer_parts.append("\n\n[答案过长，已截断]"); break
+    sources = _extract_sources(docs)
+    answer_text = "".join(answer_parts)
+    schedule_stream_persist(intent, request.query, answer_text, identity, request.history)
+    rag_engine._schedule_session_persist(identity, request.query, answer_text)
+    observability.timing("generate", _t() - gen_t0)
+    clean_answer = answer_text.replace("\n\n[答案过长，已截断]", "")
+    vf_t0 = _t()
+    if settings.verify_async_enabled:
+        task_id = await submit_verify_task(clean_answer, docs, identity=identity, query=request.query, trace_id=getattr(fastapi_req.state, "trace_id", ""))
+        observability.timing("verify_submit", _t() - vf_t0)
+        yield _build_done_event(sources, verified=False, **({"verify_task_id": task_id} if task_id else {}))
+    else:
+        verified = await reflector.verify_answer(clean_answer, docs)
+        observability.timing("verify", _t() - vf_t0)
+        if verified.get("claims"):
+            v_data = {k: verified[k] for k in ("claims", "overall_confidence", "total_claims", "supported", "inferred", "unsupported")}
+            yield f"event: verified\ndata: {json.dumps(v_data, ensure_ascii=False)}\n\n"
+            yield _build_done_event(sources, verified=True, overall_confidence=verified["overall_confidence"])
+        else:
+            yield _build_done_event(sources, verified=False)
+async def _stream_no_docs_fallback(query, intent, identity):
+    """无文档时生成兜底回答并返回 SSE 事件序列"""
+    from llm.client import LLMFactory
+    client = LLMFactory.get_client()
+    answer_parts = []
+    async for token in client.generate_stream(f"用户问：{query}\n\n知识库暂无相关信息。"):
+        answer_parts.append(token)
+        yield f"event: token\ndata: {json.dumps(token)}\n\n"
+    answer_text = "".join(answer_parts)
+    schedule_stream_persist(intent, query, answer_text, identity, [])
+    rag_engine._schedule_session_persist(identity, query, answer_text)
+    yield "event: done\ndata: {}\n\n"
+
+
+def _internal_step_to_sse(evt, _t):
+    """将 _stream_retrieve_rerank_reflect 内部 _step dict 转换为 SSE step 事件"""
+    step_name = evt["_step"]
+    timing_ms = int((_t() - evt.get("t0", _t())) * 1000)
+    if step_name == "retrieval":
+        data = {"count": evt["count"], "relevant": evt["count"],
+                "top_abs_cosine": round(evt["top_abs"], 4) if evt["count"] > 0 else None,
+                "suspected_misclassify": evt["suspected"], "previews": evt["previews"]}
+    elif step_name == "rerank":
+        data = {"before": evt["before"], "after": evt["after"]}
+    elif step_name == "reflection":
+        data = evt["data"]
+    else:
+        return None
+    return _build_step_event(step_name, data, timing_ms)
+
+
+async def _chat_stream_events(request, fastapi_req, identity):
+    """chat_stream SSE 事件生成器（意图→检索→重排→反思→生成→验证）"""
+    import time as _time_mod
+    _t = _time_mod.monotonic
+    intent, failed = "", False
+    try:
+        t0 = _t()
+        from agent.router import router_agent
+        intent_result = await router_agent.classify(request.query, history=request.history, tool_history=await resolve_tool_history(identity))
+        intent = intent_result.get("intent", "knowledge")
+        observability.timing("intent", _t() - t0)
+        labels = {"knowledge": "知识库", "casual_chat": "闲聊", "realtime": "实时数据"}
+        yield _build_step_event("intent", {"label": labels.get(intent, intent), "confidence": intent_result.get("confidence", 0)}, int((_t() - t0) * 1000))
+        if intent == "casual_chat":
+            from llm.client import LLMFactory
+            async for token in LLMFactory.get_client().generate_stream(f"你是知识库问答系统的 AI 助手。\n用户: {request.query}"):
+                yield f"event: token\ndata: {json.dumps(token)}\n\n"
+            yield "event: done\ndata: {}\n\n"
+            return
+        # Step 2-4: 检索 + 重排 + 反思
+        docs = None
+        async for evt in _stream_retrieve_rerank_reflect(request, identity, _t):
+            if "_step" in evt:
+                sse = _internal_step_to_sse(evt, _t)
+                if sse:
+                    yield sse
+            elif "_no_docs" in evt:
+                async for e in _stream_no_docs_fallback(request.query, intent, identity):
+                    yield e
+                return
+            elif "_docs" in evt:
+                docs = evt["_docs"]
+        if docs is None:
+            yield "event: done\ndata: {}\n\n"
+            return
+        # Step 5-7: 生成 + 验证
+        async for evt in _stream_generate_verify(request, fastapi_req, identity, intent, _t, docs):
+            yield evt
+    except Exception as e:
+        failed = True
+        logger.error("流式问答失败: %s", e, exc_info=True)
+        yield f"event: error\ndata: {json.dumps({'message': '服务暂时不可用'})}\n\n"
+    finally:
+        persist_request_log(fastapi_req, "chat_stream", intent=intent, error=failed)
+
+
+
 @app.post("/ai/rag/chat/stream")
 async def chat_stream(request: ChatRequest, fastapi_req: Request):
     """RAG 知识库问答（流式输出）
@@ -508,202 +634,10 @@ async def chat_stream(request: ChatRequest, fastapi_req: Request):
     identity = resolve_identity(fastapi_req)
 
     async def event_stream():
-        import time
-        _t = time.monotonic
-        intent = ""
-        failed = False
-        try:
-            # ====== Step 1: 意图识别 ======
-            t0 = _t()
-            from agent.router import router_agent
-            # module-063（WP-A，纪律 §八.2）：流式检索链也接 history——漏一个
-            # 就是"chat 正常、stream 回归"（空 history 零回归）
-            # module-072（WP-B）：流式路径 classify 补传 tool_history（持久化
-            # 工具轨迹，查询不可得/失败 → None fail-open）
-            intent_result = await router_agent.classify(
-                request.query, history=request.history,
-                tool_history=await resolve_tool_history(identity))
-            intent = intent_result.get("intent", "knowledge")
-            observability.timing("intent", _t() - t0)
-            intent_labels = {"knowledge": "知识库", "casual_chat": "闲聊", "realtime": "实时数据"}
-            step_data = json.dumps({
-                "step": "intent",
-                "data": {"label": intent_labels.get(intent, intent), "confidence": intent_result.get("confidence", 0)},
-                "timing_ms": int((_t() - t0) * 1000),
-            })
-            yield f"event: step\ndata: {step_data}\n\n"
-
-            if intent == "casual_chat":
-                from llm.client import LLMFactory
-                client = LLMFactory.get_client()
-                async for token in client.generate_stream(
-                    f"你是知识库问答系统的 AI 助手。\n用户: {request.query}"
-                ):
-                    yield f"event: token\ndata: {json.dumps(token)}\n\n"
-                yield "event: done\ndata: {}\n\n"
-                return
-
-            # ====== Step 2: 检索 ======
-            t0 = _t()
-            # module-072（WP-A）：流式路径透传对话历史给上下文改写
-            #（contextual_rewrite_enabled 关闭时 history 参数零影响）
-            docs = await rag_engine._retrieve(request.query, top_k=20,
-                                              history=request.history)
-            retrieval_count = len(docs)
-            observability.timing("retrieve", _t() - t0)
-            # module-045 WP3: L3 标记接入流式路径（对齐非流式 engine.chat）——
-            # 检索 top-1 绝对余弦 < 0.3 → suspected_misclassify（先度量后干预，
-            # 只写入 step 事件可观测）。_retrieve 已做父块映射，abs_cosine 经
-            # WP2b 透传（子块最大值），流式路径不再恒 0.0 恒标记
-            suspected_misclassify, top1_abs = rag_engine._check_suspected_misclassify(docs)
-            # 预览文档（前5条标题+摘要）
-            previews = []
-            # module-035 (P2)：移除失真阈值——hybrid_score 是 min-max 相对分
-            #（跨查询不可比），旧 MIN_SCORE=0.3 套相对分当绝对阈值语义失真。
-            # relevant 仅供 UI 展示统计（不影响回答正确性），检索步骤本身即
-            # 相关性门控，故直接统计检索召回数，不做虚假的绝对质量判断。
-            relevant_count = retrieval_count
-            for d in docs:
-                score = d.get("hybrid_score", 0)
-                if len(previews) < 5:
-                    previews.append({
-                        "title": d.get("title", ""),
-                        "snippet": d.get("content", "")[:80],
-                        "score": round(score, 3),
-                    })
-            step_data = json.dumps({
-                "step": "retrieval",
-                "data": {"count": retrieval_count, "relevant": relevant_count,
-                         "top_abs_cosine": round(top1_abs, 4) if docs else None,
-                         "suspected_misclassify": suspected_misclassify,
-                         "previews": previews},
-                "timing_ms": int((_t() - t0) * 1000),
-            })
-            yield f"event: step\ndata: {step_data}\n\n"
-
-            if not docs:
-                from llm.client import LLMFactory
-                client = LLMFactory.get_client()
-                answer_parts = []
-                async for token in client.generate_stream(
-                    f"用户问：{request.query}\n\n知识库暂无相关信息。"
-                ):
-                    answer_parts.append(token)
-                    yield f"event: token\ndata: {json.dumps(token)}\n\n"
-                # module-033：knowledge 路径生成结束后异步触发长期记忆自动写入
-                schedule_stream_persist(intent, request.query, "".join(answer_parts), identity, request.history)
-                # module-034：会话持久化为主（异步写库，不阻塞 SSE 响应）
-                rag_engine._schedule_session_persist(identity, request.query, "".join(answer_parts))
-                yield "event: done\ndata: {}\n\n"
-                return
-
-            # ====== Step 3: Rerank ======
-            t0 = _t()
-            rerank_before = len(docs)
-            docs = await rag_engine._rerank(request.query, docs)
-            observability.timing("rerank", _t() - t0)
-            step_data = json.dumps({
-                "step": "rerank",
-                "data": {"before": rerank_before, "after": len(docs)},
-                "timing_ms": int((_t() - t0) * 1000),
-            })
-            yield f"event: step\ndata: {step_data}\n\n"
-
-            # ====== Step 4: 反思 ======
-            t0 = _t()
-            from agent.reflector import reflector
-            check = await reflector.check_sufficiency(request.query, docs)
-            observability.timing("reflection", _t() - t0)
-            reflection_data = {
-                "sufficient": check.get("sufficient", True),
-                "reason": check.get("reason", ""),
-            }
-            if not check.get("sufficient", True) and check.get("rewritten_query"):
-                reflection_data["rewritten_query"] = check["rewritten_query"]
-            step_data = json.dumps({
-                "step": "reflection", "data": reflection_data,
-                "timing_ms": int((_t() - t0) * 1000),
-            })
-            yield f"event: step\ndata: {step_data}\n\n"
-
-            # ====== Step 5: 流式生成 ======
-            # module-025: 流式路径接入记忆（复用 engine._recall_memory，
-            # 5s 超时 + 失败降级返回空串；无记忆时 memory 为空串，零回归）
-            # module-032: 记忆按身份隔离（user_id 优先，否则 client_ip）
-            # module-034: 会话恢复优先持久化（刷新/换设备不丢）；无则用当前请求
-            memory = await rag_engine._recall_memory(request.query, identity)
-            history = await rag_engine._resolve_session_history(identity, request.history)
-            answer_parts = []
-            gen_t0 = _t()
-            total_len = 0
-            async for token in reflector.generate_answer_stream(request.query, docs, history=history, memory=memory):
-                answer_parts.append(token)
-                total_len += len(token)
-                yield f"event: token\ndata: {json.dumps(token)}\n\n"
-                # module-042: 答案长度保护 — 超出上限停止流式输出并追加截断提示
-                if total_len >= MAX_ANSWER_LEN:
-                    truncation_note = "\n\n[答案过长，已截断]"
-                    answer_parts.append(truncation_note)
-                    yield f"event: token\ndata: {json.dumps(truncation_note)}\n\n"
-                    break
-
-            # ====== Step 6: 引用溯源 ======
-            sources = []
-            for i, doc in enumerate(docs[:5]):
-                sources.append({
-                    "id": doc.get("id"),
-                    "title": doc.get("title", ""),
-                    "content": doc.get("content", "")[:300],
-                    "source": doc.get("source", ""),
-                    "ref_index": i + 1,
-                })
-            # module-033：knowledge 路径流式生成结束后异步触发长期记忆自动写入
-            #（fire-and-forget；casual_chat 已提前返回、realtime 由 intent 检查跳过）
-            schedule_stream_persist(intent, request.query, "".join(answer_parts), identity, request.history)
-            # module-034：会话持久化为主（异步写库，不阻塞 SSE 响应）
-            rag_engine._schedule_session_persist(identity, request.query, "".join(answer_parts))
-
-            # ====== Step 7: 证据链验证（module-039；module-060 异步后置） ======
-            observability.timing("generate", _t() - gen_t0)
-            full_answer = "".join(answer_parts)
-            # module-042: 剥离截断标记后验证，避免标记文本误导置信度评估
-            clean_answer = full_answer.replace("\n\n[答案过长，已截断]", "")
-            vf_t0 = _t()
-            if settings.verify_async_enabled:
-                # module-060：异步 verify——答案先交付（done 带 verify_task_id、
-                # verified=False、不再发 verified 事件），验证后台跑、前端轮询
-                # GET /ai/rag/chat/verify/{task_id} 补结果，结果落 verify_results
-                # 表持久化。提交失败（DB 写失败）→ done 无 task_id，前端
-                # fail-open 不显示面板（与现状空 claims 不显示一致）。
-                verify_task_id = await submit_verify_task(
-                    clean_answer, docs, identity=identity,
-                    query=request.query,
-                    trace_id=getattr(fastapi_req.state, "trace_id", ""),
-                )
-                observability.timing("verify_submit", _t() - vf_t0)
-                if verify_task_id:
-                    yield f"event: done\ndata: {json.dumps({'sources': sources, 'verified': False, 'verify_task_id': verify_task_id})}\n\n"
-                else:
-                    yield f"event: done\ndata: {json.dumps({'sources': sources, 'verified': False})}\n\n"
-            else:
-                # module-060 开关 false：现状同步路径（verified→done 顺序逐字一致，逃生口）
-                verified = await reflector.verify_answer(clean_answer, docs)
-                observability.timing("verify", _t() - vf_t0)
-                if verified.get("claims"):
-                    yield f"event: verified\ndata: {json.dumps({'claims': verified['claims'], 'overall_confidence': verified['overall_confidence'], 'total_claims': verified['total_claims'], 'supported': verified['supported'], 'inferred': verified['inferred'], 'unsupported': verified['unsupported']}, ensure_ascii=False)}\n\n"
-                    yield f"event: done\ndata: {json.dumps({'sources': sources, 'verified': True, 'overall_confidence': verified['overall_confidence']})}\n\n"
-                else:
-                    yield f"event: done\ndata: {json.dumps({'sources': sources, 'verified': False})}\n\n"
-
-        except Exception as e:
-            failed = True
-            logger.error("流式问答失败: %s", e, exc_info=True)
-            yield f"event: error\ndata: {json.dumps({'message': '服务暂时不可用'})}\n\n"
-        finally:
-            # module-058：请求观测落库（流式结束/断开均触发，fail-open）
-            persist_request_log(fastapi_req, "chat_stream", intent=intent,
-                                error=failed)
-
+        """SSE 流式事件生成器（委托 _chat_stream_events）"""
+        async for _evt in _chat_stream_events(request, fastapi_req, identity):
+            yield _evt
+        return
     return StreamingResponse(
         event_stream(),
         media_type="text/event-stream",
@@ -769,6 +703,7 @@ async def chat_agent(request: ChatRequest, fastapi_req: Request):
     identity = resolve_identity(fastapi_req)
 
     async def event_stream():
+        """SSE 流式事件生成器（Agent ReAct 循环）"""
         from agent.react import ReactContext, _build_messages, react_loop
         failed = False
         try:
@@ -840,6 +775,7 @@ async def chat_agent_langgraph(request: ChatRequest, fastapi_req: Request):
     identity = resolve_identity(fastapi_req)
 
     async def event_stream():
+        """SSE 流式事件生成器（LangGraph ReAct 循环）"""
         from agent.langgraph_react import (
             ReactContext, _build_messages, langgraph_react_loop,
         )
@@ -971,22 +907,14 @@ async def submit_feedback(request: FeedbackRequest, fastapi_req: Request):
 
 
 @app.post("/ai/rag/documents")
-async def add_document(
-    title: str = Body(...),
-    content: str = Body(...),
-    source: str = Body(default=""),
-):
+async def add_document(title: str = Body(...), content: str = Body(...), source: str = Body(default="")):
     """添加文档到知识库（向量化后自动入库）"""
     result = await rag_engine.add_document(title, content, source)
     return {"code": 0, "data": result}
 
 
 @app.post("/ai/rag/documents/upload")
-async def upload_document(
-    file: UploadFile = File(...),
-    title: str = Form(default=""),
-    source: str = Form(default=""),
-):
+async def upload_document(file: UploadFile = File(...), title: str = Form(default=""), source: str = Form(default="")):
     """多格式文档上传：解析 → 图片 → 清洗 → 归一化 → 去重 → 分块 → 嵌入 → 入库（module-064）
 
     支持 .md/.txt/.pdf/.docx/.xlsx/.pptx/.epub/.csv（前端 accept 同源，见
@@ -1101,7 +1029,89 @@ async def delete_document(doc_id: int):
     await cache.delete_by_prefix("rag:retrieve:")
 
     logger.info("删除文档: id=%d, title=%s, chunks=%d", doc_id, title, len(to_delete))
-    return {"code": 0, "message": f"已删除 {len(to_delete)} 条记录"}
+    removed_count = len(to_delete)
+    return {"code": 0, "message": f"成功移除 {removed_count} 条记录"}
+
+
+# ─── 知识抓取流水线端点（module-075） ───
+
+
+class CrawlSourceRequest(BaseModel):
+    """抓取源配置请求体
+
+    Attributes:
+        url_pattern: URL 前缀模式（如 https://spring.io/docs）
+        name: 人类可读名称（可选）
+    """
+    url_pattern: str
+    name: str = ""
+
+
+@app.post("/ai/crawl/sources")
+async def add_crawl_source(req: CrawlSourceRequest):
+    """添加抓取源配置"""
+    if not req.url_pattern.strip():
+        return {"code": 1, "msg": "url_pattern 不能为空"}
+    if not req.url_pattern.lower().startswith(("http://", "https://")):
+        return {"code": 1, "msg": "url_pattern 必须以 http:// 或 https:// 开头"}
+
+    from sqlalchemy import text
+    async with async_session_factory() as session:
+        await session.execute(
+            text("INSERT INTO source_configs (url_pattern, name) VALUES (:url, :name)"),
+            {"url": req.url_pattern.strip(), "name": req.name.strip()},
+        )
+        await session.commit()
+
+    logger.info("添加抓取源: %s (%s)", req.name, req.url_pattern[:80])
+    return {"code": 0, "msg": "success", "data": {"url_pattern": req.url_pattern, "name": req.name}}
+
+
+@app.get("/ai/crawl/sources")
+async def list_crawl_sources():
+    """列出所有抓取源配置"""
+    from sqlalchemy import text
+    async with async_session_factory() as session:
+        result = await session.execute(
+            text("SELECT id, url_pattern, name, enabled, last_crawled_at, created_at FROM source_configs ORDER BY id")
+        )
+        rows = result.fetchall()
+        sources = [
+            {
+                "id": r[0], "url_pattern": r[1], "name": r[2],
+                "enabled": r[3],
+                "last_crawled_at": r[4].isoformat() if r[4] else None,
+                "created_at": r[5].isoformat() if r[5] else None,
+            }
+            for r in rows
+        ]
+    return {"code": 0, "msg": "success", "data": {"sources": sources}}
+
+
+@app.post("/ai/crawl/run")
+async def trigger_crawl():
+    """手动触发一次抓取（调试用）"""
+    from rag.crawl.crawler import run_crawl, _load_sources_from_db
+
+    sources = await _load_sources_from_db()
+    enabled = [s for s in sources if s.get("enabled", True)]
+    if not enabled:
+        return {"code": 0, "msg": "无启用的源配置", "data": {"crawled": 0, "approved": 0, "rejected": 0}}
+
+    summary = await run_crawl(enabled)
+    return {
+        "code": 0,
+        "msg": "success",
+        "data": {
+            "crawled": summary.crawled,
+            "approved": summary.approved,
+            "rejected": summary.rejected,
+            "errors": summary.errors,
+            "skipped": summary.skipped,
+        },
+    }
+
+
 
 
 if __name__ == "__main__":

@@ -31,3 +31,6 @@ node_modules/
 Thumbs.db
 .workbuddy/
 .claude/
+
+# ---- 运行时数据（抓取原件/上传文件）----
+rag-service/uploads/

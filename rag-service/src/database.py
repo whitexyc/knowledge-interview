@@ -264,6 +264,58 @@ async def init_db():
     logger.info("documents 表 original_path/doc_content_hash/duplicate_cluster_id/is_canonical 列已就绪（module-064）")
     await ensure_tool_call_logs_table()
     logger.info("tool_call_logs 表已就绪（module-066）")
+    await ensure_source_configs_table()
+    logger.info("source_configs 表已就绪（module-075）")
+    await ensure_review_status_column()
+    logger.info("documents 表 review_status 列已就绪（module-075）")
+
+
+# source_configs 表 DDL（module-075 知识抓取流水线）：crawl 来源配置表。
+# 白名单由 source_configs 表驱动（用户可配），POST /ai/crawl/sources 添加。
+# url_pattern 为 URL 前缀匹配（如 https://spring.io/docs）。
+SOURCE_CONFIGS_DDL = """
+CREATE TABLE IF NOT EXISTS source_configs (
+    id              SERIAL       PRIMARY KEY,
+    url_pattern     VARCHAR(512) NOT NULL,
+    name            VARCHAR(128) DEFAULT '',
+    enabled         BOOLEAN      NOT NULL DEFAULT TRUE,
+    last_crawled_at TIMESTAMP,
+    created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+COMMENT ON TABLE source_configs IS '知识抓取源配置（URL 白名单，POST /ai/crawl/sources 管理）';
+COMMENT ON COLUMN source_configs.url_pattern IS 'URL 前缀模式（如 https://spring.io/docs）';
+COMMENT ON COLUMN source_configs.name IS '人类可读名称';
+COMMENT ON COLUMN source_configs.enabled IS '是否启用';
+COMMENT ON COLUMN source_configs.last_crawled_at IS '最近一次抓取时间';
+"""
+
+
+async def ensure_source_configs_table() -> None:
+    """幂等创建 source_configs 表（与 feedback/request_logs 同款拆分执行模式）"""
+    statements = [s.strip() for s in SOURCE_CONFIGS_DDL.split(";") if s.strip()]
+    async with async_session_factory() as session:
+        for stmt in statements:
+            await session.execute(text(stmt))
+        await session.commit()
+
+
+# documents 表加列 DDL（module-075 知识抓取流水线）：review_status 标记
+# 抓取内容的审查状态（approved/rejected），与 superseded/type 同款 init_db
+# 幂等 ALTER 模式。默认 'approved'（存量行不受影响）。
+REVIEW_STATUS_DDL = """
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS review_status VARCHAR(16) NOT NULL DEFAULT 'approved';
+COMMENT ON COLUMN documents.review_status IS '审查状态：approved（通过）/ rejected（不通过，仍入库可复核）——module-075';
+"""
+
+
+async def ensure_review_status_column() -> None:
+    """幂等补 documents 表 review_status 列（与 superseded 同款拆分执行模式）"""
+    statements = [s.strip() for s in REVIEW_STATUS_DDL.split(";") if s.strip()]
+    async with async_session_factory() as session:
+        for stmt in statements:
+            await session.execute(text(stmt))
+        await session.commit()
+
 
 
 async def get_db() -> AsyncSession:
