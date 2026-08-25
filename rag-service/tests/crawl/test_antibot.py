@@ -229,8 +229,8 @@ class TestRobotsAllowed:
         with patch("rag.crawl.crawler.httpx.AsyncClient", side_effect=factory):
             await _check_robots_allowed("https://ua-check.example.com/page")
         # _check_robots_allowed 不传 headers 到 client
-        assert "headers" not in captured_constructor_kwargs
-
+        # P3-5: robots 检查现在传 User-Agent 头（固定 _ROBOTS_UA）
+        assert captured_constructor_kwargs.get("headers", {}).get("User-Agent") == _ROBOTS_UA
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 2. UA 轮换 + 请求头增强
@@ -663,7 +663,91 @@ class TestAntibotConfig:
         fields = Settings.model_fields
         assert fields["crawl_request_delay_seconds"].default == 1.0
         assert fields["crawl_retry_max"].default == 3
-        assert fields["crawl_retry_base_seconds"].default == 2.0
-        assert fields["crawl_proxies"].default == ""
-        assert fields["crawl_robots_cache_ttl"].default == 3600
+        assert fields["crawl_retry_base_seconds"].default == 1.0  # P3-3: 对齐 plan
         assert fields["crawl_user_agents"].default == ""
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 7. P3-8 补充测试（AC-3.2/3.3 + 限速 per-source 隔离）
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestAntibotP3Additions:
+    """P3-8: 补充 3 个缺失独立测试"""
+
+    @pytest.mark.asyncio
+    async def test_robots_non_text_html_fail_open(self, monkeypatch):
+        """AC-3.2: robots.txt 返回非文本 HTML 404 → fail-open 允许"""
+        from src.config import settings
+        monkeypatch.setattr(settings, "crawl_robots_cache_ttl", 0)
+
+        async def get_fn(url):
+            resp = MagicMock()
+            resp.text = "<html><body>Not Found</body></html>"
+            resp.raise_for_status = MagicMock()
+            return resp
+
+        _robots_cache.clear()
+        with patch("rag.crawl.crawler.httpx.AsyncClient",
+                   return_value=_make_mock_client_side_effect(get_fn)):
+            result = await _check_robots_allowed("https://html-robots.example.com/page")
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_proxy_connect_error_switches(self, monkeypatch):
+        """AC-3.3: 代理连接拒绝（ConnectError）→ 切换下一个代理"""
+        from src.config import settings
+        monkeypatch.setattr(settings, "crawl_retry_max", 2)
+        monkeypatch.setattr(settings, "crawl_retry_base_seconds", 0.01)
+        monkeypatch.setattr(settings, "crawl_proxies", "http://bad-a:8080,http://good-b:8080")
+
+        import rag.crawl.crawler as crawler_mod
+        monkeypatch.setattr(crawler_mod, "_proxy_pool", [])
+        monkeypatch.setattr(crawler_mod, "_proxy_index", 0)
+
+        call_count = {"n": 0}
+
+        def factory(**kwargs):
+            inst = AsyncMock()
+            call_count["n"] += 1
+            if call_count["n"] <= 1:
+                # 第一个代理连接拒绝
+                inst.get = AsyncMock(side_effect=httpx.ConnectError("connection refused"))
+            else:
+                inst.get = AsyncMock(return_value=_mock_httpx_response(200))
+            inst.__aenter__ = AsyncMock(return_value=inst)
+            inst.__aexit__ = AsyncMock(return_value=False)
+            return inst
+
+        with patch("rag.crawl.crawler.httpx.AsyncClient", side_effect=factory):
+            result = await fetch_page("https://example.com")
+        assert result.success is True
+        assert call_count["n"] == 2  # 第一个失败，第二个成功
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_per_source_isolation(self, monkeypatch):
+        """限速 per-source 隔离：不同 source_key 互不阻塞"""
+        from src.config import settings
+        monkeypatch.setattr(settings, "crawl_request_delay_seconds", 1.0)
+
+        import rag.crawl.crawler as crawler_mod
+        crawler_mod._last_fetch_time.clear()
+
+        sleep_called = {"count": 0, "delays": []}
+
+        async def mock_sleep(delay):
+            sleep_called["count"] += 1
+            sleep_called["delays"].append(delay)
+
+        with patch("rag.crawl.crawler.asyncio.sleep", side_effect=mock_sleep):
+            with patch("rag.crawl.crawler.time.monotonic", return_value=100.0):
+                # source 1 首次 → 设 last
+                await _rate_limit_delay(source_id=1)
+                # source 2 首次 → 不同 source，不 sleep
+                await _rate_limit_delay(source_id=2)
+                # source 1 二次 → elapsed=0 < 1.0 → sleep
+                await _rate_limit_delay(source_id=1)
+
+        # 只有 source 1 第二次调用触发 sleep
+        assert sleep_called["count"] == 1
+        assert sleep_called["delays"][0] == pytest.approx(1.0)

@@ -276,6 +276,28 @@ async def init_db():
     logger.info("source_configs 表 priority 列已就绪（module-080）")
     await ensure_priority_queue_table()
     logger.info("crawl_priority 队列表已就绪（module-080 反向闭环）")
+    await ensure_documents_embedding_hnsw_index()
+    logger.info("documents 表 embedding HNSW 索引已就绪（backlog P2 修复）")
+
+
+# documents.embedding HNSW 索引（backlog P2 修复，2026-08-26）：
+# 检索/去重均走 ORDER BY embedding <=> :vec LIMIT k，无索引时是 14k+ 行顺序扫描。
+# 选用 HNSW（pgvector >= 0.5.0，本库 0.8.3）：1024 维高维数据召回稳定，且支持增量插入
+# 不重建（对齐 module-079「增量 append 不重建」验收口径）。vector_cosine_ops 与 bge-m3
+# L2 归一化嵌入匹配（余弦距离）。CREATE INDEX IF NOT EXISTS 幂等，重复启动不报错。
+DOCUMENTS_EMBEDDING_HNSW_DDL = """
+CREATE INDEX IF NOT EXISTS idx_documents_embedding_hnsw ON documents
+    USING hnsw (embedding vector_cosine_ops);
+"""
+
+
+async def ensure_documents_embedding_hnsw_index() -> None:
+    """幂等建 documents.embedding HNSW 索引（与 feedback 同款拆分执行模式）"""
+    statements = [s.strip() for s in DOCUMENTS_EMBEDDING_HNSW_DDL.split(";") if s.strip()]
+    async with async_session_factory() as session:
+        for stmt in statements:
+            await session.execute(text(stmt))
+        await session.commit()
 
 
 # source_configs 表 DDL（module-075 知识抓取流水线）：crawl 来源配置表。

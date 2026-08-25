@@ -375,12 +375,13 @@ class Settings(BaseSettings):
     #   crawl_retry_max —— 429/5xx 指数退避最大重试次数（0 = 不重试）。
     #   crawl_retry_base_seconds —— 重试退避基础延迟（秒），实际 = base × 2^attempt + jitter。
     #   crawl_proxies —— 逗号分隔 HTTP 代理列表（http://host:port），空 = 直连。
-    #     round-robin 轮换，失败自动切下一个，全部失败 → fail-open 直连。
+    #     round-robin 轮换，失败自动切下一个，全部代理失败 → 返回失败（无直连回退，
+    #     设计取舍：保守策略，避免 fail-open 绕过代理合规要求）。
     #   crawl_robots_cache_ttl —— robots.txt 解析结果缓存 TTL（秒），0 = 不缓存。
     #   crawl_user_agents —— 逗号分隔自定义 UA 列表，空 = 使用内置 ~10 个浏览器 UA 池。
     crawl_request_delay_seconds: float = 1.0
     crawl_retry_max: int = 3
-    crawl_retry_base_seconds: float = 2.0
+    crawl_retry_base_seconds: float = 1.0  # P3-3: 对齐 plan §3.6 声明 1.0
     crawl_proxies: str = ""
     crawl_robots_cache_ttl: int = 3600
     crawl_user_agents: str = ""
