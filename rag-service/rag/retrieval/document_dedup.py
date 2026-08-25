@@ -25,11 +25,10 @@ import logging
 import re
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
-from rag.models import Document
 from rag.retrieval.embeddings import EmbeddingService, embedding_service as default_embedding_service
 
 logger = logging.getLogger(__name__)
@@ -102,17 +101,34 @@ def _cosine(a: list[float], b: list[float]) -> float:
     return sum(x * y for x, y in zip(a, b))
 
 
+# L2 语义去重候选查询：pgvector 余弦距离 <=> top-K（对齐 retriever._vector_search /
+# crawler._conflict_candidates 先例；embedding 字符串绑定规避 asyncpg 类型编解码）
+_SEMANTIC_DUP_SQL = text("""
+    SELECT id, title, duplicate_cluster_id,
+           1 - (embedding <=> :vec) AS cosine
+    FROM documents
+    WHERE parent_id IS NULL AND embedding IS NOT NULL
+      AND is_canonical IS true
+      AND (source IS NULL OR source NOT LIKE 'memory:%')
+    ORDER BY embedding <=> :vec ASC
+    LIMIT :k
+""")
+
+
 async def find_semantic_duplicate(
     doc_text: str,
     embedding_service: Optional[EmbeddingService] = None,
     session: Optional[AsyncSession] = None,
     threshold: Optional[float] = None,
 ) -> Optional[dict]:
-    """在现有文档根父块中找语义重复（L2）
+    """现有文档根父块中找语义重复（L2，pgvector top-K）
 
-    文档级 embedding 存于文档根父块（parent_id IS NULL 且 embedding 非空）——
-    即 module-064 之后入库的文档（首父块持有文档级向量）。存量旧文档（embedding
-    NULL）不参与比较（诚实边界：语义去重对新格式文档生效，存量靠 L1/title）。
+    候选获取从 ORM 全表拉取 + Python 逐条余弦（O(N)）改为 pgvector SQL top-K
+    （O(log N + K)，K=doc_dedup_candidate_top_k 默认 50），Python 只对 top-K
+    判余弦阈值；余弦由 SQL 算好（1 - (embedding <=> :vec)），不再对 embedding
+    做真值判定——根除 backlog① `if not emb` 对 pgvector ndarray 抛 ValueError
+    的 bug。正确性：余弦降序下 ≥ 阈值的候选必在前 K 高余弦内，top-K 截断与
+    全表扫描判定一致。全链路失败 fail-open 返回 None（语义去重不阻断入库）。
 
     Args:
         doc_text: 清洗/归一化后的文档全文（先剥离 Boilerplate）
@@ -120,51 +136,34 @@ async def find_semantic_duplicate(
         session: 数据库会话（None → 自建）
         threshold: 余弦阈值（None → settings.doc_dedup_threshold）
 
-    Returns:
-        {"id": int, "title": str, "cluster_id": str, "cosine": float} 或 None
+    Returns: {"id", "title", "cluster_id", "cosine"} 或 None
     """
     threshold = settings.doc_dedup_threshold if threshold is None else threshold
     vec = await compute_doc_embedding(strip_boilerplate(doc_text), embedding_service)
     if vec is None:
         return None
-
-    def _query(conn):
-        return conn.execute(
-            select(Document).where(
-                Document.parent_id.is_(None),
-                Document.embedding.is_not(None),
-                # 候选只出 canonical（module-064 minor-1）：非 canonical 重复副本
-                # 虽存文档级 embedding，但检索侧已抑制（_expand_to_parents 只出
-                # canonical），语义对齐——副本不参与比对防低概率误判
-                Document.is_canonical.is_(True),
-                # 同源内语义去重：不跨 source 折叠（记忆文档 source=memory:% 排除，
-                # 对齐 retriever._source_condition 口径——旧格式单文档记忆
-                # parent_id=None 且带向量，须排除防把知识库文档折叠进记忆簇）
-                (Document.source.is_(None) | Document.source.not_like("memory:%")),
-            )
-        )
-
-    if session is not None:
-        result = await _query(session)
-    else:
-        from src.database import async_session_factory
-        async with async_session_factory() as sess:
-            result = await _query(sess)
-
-    best: Optional[dict] = None
-    for doc in result.scalars().all():
-        emb = doc.embedding
-        if not emb or len(emb) != len(vec):
-            continue
-        c = _cosine(vec, emb)
-        if c >= threshold and (best is None or c > best["cosine"]):
-            best = {
-                "id": doc.id,
-                "title": doc.title,
-                "cluster_id": doc.duplicate_cluster_id or str(doc.id),
-                "cosine": c,
-            }
-    return best
+    params = {"vec": f"[{','.join(str(v) for v in vec)}]", "k": settings.doc_dedup_candidate_top_k}
+    try:
+        if session is not None:
+            result = await session.execute(_SEMANTIC_DUP_SQL, params)
+        else:
+            from src.database import async_session_factory
+            async with async_session_factory() as sess:
+                result = await sess.execute(_SEMANTIC_DUP_SQL, params)
+        best: Optional[dict] = None
+        for row in result.mappings():
+            c = float(row["cosine"]) if row["cosine"] is not None else 0.0
+            if c >= threshold and (best is None or c > best["cosine"]):
+                best = {
+                    "id": row["id"],
+                    "title": row["title"],
+                    "cluster_id": row["duplicate_cluster_id"] or str(row["id"]),
+                    "cosine": c,
+                }
+        return best
+    except Exception as e:
+        logger.warning("语义去重候选查询/判定失败，fail-open 跳过: %s", e)
+        return None
 
 
 # ── L3 SimHash-LSH 接口预留（文档量几千+ 才启用） ────────────────────────
