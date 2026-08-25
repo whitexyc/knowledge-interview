@@ -90,6 +90,7 @@ xunfei:
 xunzhi-agent:
   security:
     require-xunfei-secrets: true
+    internal-token: ${XUNZHI_INTERNAL_TOKEN:}
   storage:
     base-dir: ${XUNZHI_STORAGE_BASE_DIR:${user.home}/.xunzhi-agent}
     upload-temp-dir: ${XUNZHI_MULTIPART_TEMP_DIR:${xunzhi-agent.storage.base-dir}/temp/upload}

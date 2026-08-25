@@ -571,14 +571,15 @@ async def _crawl_page_and_store(url: str, summary: CrawlSummary) -> list[str]:
         summary.details.append({"url": url, "status": "ingest_error", "error": str(e)[:200]})
     return _extract_links(result.content, url, settings.crawl_max_links_per_page)
 
-async def _recursive_crawl(url: str, depth: int, max_depth: int, whitelist: list[str], visited: set[str], limit: int, summary: CrawlSummary) -> None:
+async def _recursive_crawl(url: str, depth: int, max_depth: int, whitelist: Optional[list], visited: set[str], limit: int, summary: CrawlSummary) -> None:
     """递归抓取：深度控制 + 白/黑名单 + visited 去重 + 总页数上限
 
     Args:
         url: 待抓取 URL（种子页或递归链接）
         depth: 当前深度（种子页=0）
         max_depth: 本源最大深度（min(source.max_depth, config 全局上限)）
-        whitelist: 本源白名单前缀（不命中不递归）
+        whitelist: 本源白名单前缀（不命中不递归）；None=不限制（module-080
+            优先级主题为系统显式请求，放行；黑名单/robots/审查照常生效）
         visited: 去重池（单次 run_crawl 全树共享，循环自断）
         limit: 总页数上限（全树共享计数）
         summary: 批次汇总（累计计数与详情）
@@ -586,7 +587,7 @@ async def _recursive_crawl(url: str, depth: int, max_depth: int, whitelist: list
     if len(visited) >= limit or depth > max_depth:
         return
     url = _normalize_url(url)
-    if not _matches_any(url, whitelist) or url in visited:
+    if (whitelist is not None and not _matches_any(url, whitelist)) or url in visited:
         return
     if _is_blacklisted_url(url):
         logger.info("链接命中黑名单，跳过: %s", url[:80])
@@ -601,11 +602,33 @@ async def _recursive_crawl(url: str, depth: int, max_depth: int, whitelist: list
     for link in child_links:
         await _recursive_crawl(link, depth + 1, max_depth, whitelist, visited, limit, summary)
 
+async def _crawl_single_source(src: dict, visited: set[str], limit: int, summary: CrawlSummary) -> None:
+    """处理单个源的抓取（module-080 从 run_crawl 提取，保持行为不变）"""
+    url_pattern = src.get("url_pattern", "")
+    name = src.get("name", url_pattern)
+    if not url_pattern or not _is_safe_url(url_pattern):
+        summary.skipped += 1
+        return
+    if _is_blacklisted_url(url_pattern):
+        logger.info("种子命中黑名单，跳过: %s", url_pattern[:80])
+        summary.skipped += 1
+        return
+    raw_depth = src.get("max_depth")
+    source_depth = max(int(raw_depth) if raw_depth is not None else 1, 0)
+    max_depth = min(source_depth, settings.crawl_max_depth)
+    whitelist = [_normalize_url(url_pattern)]
+    logger.info("开始递归抓取: %s (%s, max_depth=%d)", name, url_pattern[:80], max_depth)
+    await _recursive_crawl(url_pattern, 0, max_depth, whitelist, visited, limit, summary)
+
+
 async def run_crawl(sources: list[dict], *, max_pages: int = 0) -> CrawlSummary:
     """执行一次抓取批次（受控递归：深度 + 去重 + 过滤 + 总页数上限）
 
+    module-080：抓取前动态计算优先级（待学笔记关键词匹配源 url_pattern/name），
+    高优先源先抓。
+
     Args:
-        sources: source_configs 行列表 [{"url_pattern", "name", "enabled", "max_depth"}]
+        sources: source_configs 行列表 [{"url_pattern", "name", "enabled", "max_depth", "priority"}]
         max_pages: 单次最大抓取页数（0 = config 默认；递归全树共享计数）
 
     Returns:
@@ -615,28 +638,15 @@ async def run_crawl(sources: list[dict], *, max_pages: int = 0) -> CrawlSummary:
         logger.info("抓取功能已禁用（crawl_enabled=false）")
         return CrawlSummary()
 
+    # module-080：动态优先级计算（待学笔记关键词匹配源）
+    sources = await _prioritize_sources(sources)
+
     limit = max_pages or settings.crawl_max_pages_per_run
     summary = CrawlSummary()
     visited: set[str] = set()
 
     for src in sources:
-        url_pattern = src.get("url_pattern", "")
-        name = src.get("name", url_pattern)
-        if not url_pattern or not _is_safe_url(url_pattern):
-            summary.skipped += 1
-            continue
-        if _is_blacklisted_url(url_pattern):
-            logger.info("种子命中黑名单，跳过: %s", url_pattern[:80])
-            summary.skipped += 1
-            continue
-        raw_depth = src.get("max_depth")
-        source_depth = max(int(raw_depth) if raw_depth is not None else 1, 0)
-        max_depth = min(source_depth, settings.crawl_max_depth)
-        whitelist = [_normalize_url(url_pattern)]
-        logger.info("开始递归抓取: %s (%s, max_depth=%d)", name, url_pattern[:80], max_depth)
-        await _recursive_crawl(
-            url_pattern, 0, max_depth, whitelist, visited, limit, summary,
-        )
+        await _crawl_single_source(src, visited, limit, summary)
 
     logger.info(
         "抓取批次完成: crawled=%d, approved=%d, rejected=%d, errors=%d, skipped=%d",
@@ -645,15 +655,63 @@ async def run_crawl(sources: list[dict], *, max_pages: int = 0) -> CrawlSummary:
     )
     return summary
 
-# ─── APScheduler 调度器 ───
+# ─── 待学笔记优先级加权（module-080） ───
+
+
+async def _prioritize_sources(sources: list[dict]) -> list[dict]:
+    """动态计算抓取优先级：待学笔记关键词匹配源 url_pattern/name 时提升 priority
+
+    Args:
+        sources: 源配置列表（含 priority 字段）
+
+    Returns:
+        按 _priority 降序排列的源列表（不修改原列表，新增 _priority 字段）
+    """
+    try:
+        from rag.memory.weak_topics import recall_weak_topics, extract_keywords
+        topics = await recall_weak_topics()
+        keywords = extract_keywords(topics)
+        if not keywords:
+            # 无待学笔记，按 DB 静态 priority 排序
+            for src in sources:
+                src["_priority"] = src.get("priority", 0)
+            sources.sort(key=lambda s: s["_priority"], reverse=True)
+            return sources
+
+        boost = settings.weak_topic_priority_boost
+        for src in sources:
+            base_priority = src.get("priority", 0)
+            url_pattern = src.get("url_pattern", "").lower()
+            name = src.get("name", "").lower()
+            # 子串匹配：任一关键词命中 url_pattern 或 name 则提升
+            matched = sum(1 for kw in keywords if kw in url_pattern or kw in name)
+            src["_priority"] = base_priority + matched * boost
+            if matched > 0:
+                logger.info("待学笔记匹配源: %s (keywords=%d, boost=%d)", 
+                           src.get("name", ""), matched, matched * boost)
+
+        sources.sort(key=lambda s: s["_priority"], reverse=True)
+        return sources
+    except Exception as e:
+        logger.warning("优先级计算失败，降级为默认排序: %s", e)
+        for src in sources:
+            src["_priority"] = src.get("priority", 0)
+        sources.sort(key=lambda s: s["_priority"], reverse=True)
+        return sources
+
+
+
 
 
 _scheduler = None
 
 
 async def _scheduled_crawl_job() -> None:
-    """APScheduler 定时任务回调：读取 DB 源配置并执行抓取"""
+    """APScheduler 定时任务回调：优先级主题先抓，随后读取 DB 源配置执行常规抓取"""
     try:
+        # module-080：低分题优先级主题先于常规源抓取（延迟导入防循环依赖）
+        from rag.crawl.priority_crawl import drain_priority_seeds
+        await drain_priority_seeds()
         sources = await _load_sources_from_db()
         if not sources:
             logger.info("定时抓取：无启用的源配置，跳过")
@@ -668,13 +726,13 @@ async def _scheduled_crawl_job() -> None:
 
 
 async def _load_sources_from_db() -> list[dict]:
-    """从 DB 加载所有源配置"""
+    """从 DB 加载所有源配置（含 priority，module-080）"""
     try:
         from src.database import async_session_factory
         from sqlalchemy import text
         async with async_session_factory() as session:
             result = await session.execute(
-                text("SELECT id, url_pattern, name, enabled, max_depth, last_crawled_at FROM source_configs ORDER BY id")
+                text("SELECT id, url_pattern, name, enabled, max_depth, last_crawled_at, priority FROM source_configs ORDER BY priority DESC, id")
             )
             rows = result.fetchall()
             return [
@@ -682,6 +740,7 @@ async def _load_sources_from_db() -> list[dict]:
                     "id": r[0], "url_pattern": r[1], "name": r[2], "enabled": r[3],
                     "max_depth": r[4] if len(r) > 4 and r[4] is not None else 1,
                     "last_crawled_at": r[5] if len(r) > 5 else None,
+                    "priority": r[6] if len(r) > 6 and r[6] is not None else 0,
                 }
                 for r in rows
             ]

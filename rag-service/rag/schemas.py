@@ -84,3 +84,15 @@ class FeedbackRequest(BaseModel):
         if v not in (1, -1):
             raise ValueError("rating 必须为 1（赞）或 -1（踩）")
         return v
+
+
+class WeakTopicIngestRequest(BaseModel):
+    """待学笔记录入请求体（module-080 反向闭环）
+
+    topic 为弱题主题关键词（必填），context 为薄弱点描述（可选），
+    identity 为身份标识（可选，默认从 request.state 取）。
+    """
+    topic: str = Field(..., min_length=1, max_length=200, description="弱题主题关键词")
+    context: Optional[str] = Field(default=None, max_length=500, description="薄弱点描述（可选）")
+    identity: Optional[str] = Field(default=None, max_length=128, description="身份标识（可选）")
+

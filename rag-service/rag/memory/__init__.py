@@ -20,3 +20,5 @@ from rag.memory.nli_judge import *  # noqa: F401,F403
 # （sklearn/joblib 惰性导入），包导入零模型加载。
 from rag.memory.memory_type_clf import *  # noqa: F401,F403
 from rag.memory.memory_conflict_clf import *  # noqa: F401,F403
+from rag.memory.weak_topics import *  # noqa: F401,F403
+

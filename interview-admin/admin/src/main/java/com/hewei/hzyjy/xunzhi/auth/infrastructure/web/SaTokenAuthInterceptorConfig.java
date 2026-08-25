@@ -20,6 +20,7 @@ public class SaTokenAuthInterceptorConfig implements WebMvcConfigurer {
                 .notMatch(("/api/xunzhi/v1/users/check-login"))
                 .notMatch("/api/xunzhi/v1/ai/doubao/**")
                 .notMatch("/api/xunzhi/v1/ai/roleplay/**")
+                .notMatch("/api/xunzhi/v1/interview/weak-points")
                 .check(StpUtil::checkLogin)
         )).addPathPatterns("/**");
     }

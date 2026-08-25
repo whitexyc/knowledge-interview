@@ -272,6 +272,11 @@ async def init_db():
     logger.info("source_configs 表 max_depth 列已就绪（module-076）")
     await ensure_review_score_column()
     logger.info("documents 表 review_score 列已就绪（module-078）")
+    await ensure_priority_column()
+    logger.info("source_configs 表 priority 列已就绪（module-080）")
+    await ensure_priority_queue_table()
+    logger.info("crawl_priority 队列表已就绪（module-080 反向闭环）")
+
 
 # source_configs 表 DDL（module-075 知识抓取流水线）：crawl 来源配置表。
 # 白名单由 source_configs 表驱动（用户可配），POST /ai/crawl/sources 添加。
@@ -359,6 +364,48 @@ async def ensure_max_depth_column() -> None:
             await session.execute(text(stmt))
         await session.commit()
 
+
+
+
+# source_configs 表加列 DDL（module-080 反向闭环）：priority 抓取优先级。
+# 与 max_depth 同款 init_db 幂等 ALTER 模式；默认 0（正常），待学笔记匹配的源 +N。
+CRAWL_PRIORITY_DDL = """
+ALTER TABLE source_configs ADD COLUMN IF NOT EXISTS priority INTEGER NOT NULL DEFAULT 0;
+COMMENT ON COLUMN source_configs.priority IS '抓取优先级（数字越大越优先，默认0）——module-080';
+"""
+
+
+async def ensure_priority_column() -> None:
+    """幂等补 source_configs 表 priority 列（module-080）"""
+    statements = [s.strip() for s in CRAWL_PRIORITY_DDL.split(";") if s.strip()]
+    async with async_session_factory() as session:
+        for stmt in statements:
+            await session.execute(text(stmt))
+        await session.commit()
+
+
+
+# crawl_priority 队列表（module-080 反向闭环）：pending→processed，status 索引。
+# 注：并行会话已占用常量名 CRAWL_PRIORITY_DDL（source_configs.priority 列），改用 PRIORITY_QUEUE_DDL。
+PRIORITY_QUEUE_DDL = """
+CREATE TABLE IF NOT EXISTS crawl_priority (
+    id BIGSERIAL PRIMARY KEY, topic VARCHAR(200) NOT NULL,
+    note TEXT NOT NULL DEFAULT '', session_id VARCHAR(64) NOT NULL DEFAULT '',
+    question VARCHAR(500) NOT NULL DEFAULT '', score INTEGER NOT NULL DEFAULT 0,
+    status VARCHAR(16) NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, processed_at TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_crawl_priority_status ON crawl_priority(status);
+"""
+
+
+async def ensure_priority_queue_table() -> None:
+    """幂等创建 crawl_priority 队列表（与 feedback 同款拆分执行模式）"""
+    statements = [s.strip() for s in PRIORITY_QUEUE_DDL.split(";") if s.strip()]
+    async with async_session_factory() as session:
+        for stmt in statements:
+            await session.execute(text(stmt))
+        await session.commit()
 
 
 

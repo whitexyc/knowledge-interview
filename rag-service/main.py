@@ -28,7 +28,9 @@ from rag.engine import rag_engine, resolve_tool_history
 from rag.schemas import (
     SearchRequest, SearchResponse, ChatRequest, ChatResponse,
     MemorySaveRequest, MemoryRecallRequest, FeedbackRequest,
+    WeakTopicIngestRequest,
 )
+
 from rag.models import Document, Feedback
 from rag.memory.memory import memory_service
 from rag.retrieval.document_parser import SUPPORTED_EXTENSIONS, DocumentParseError
@@ -150,6 +152,9 @@ async def lifespan(app: FastAPI):
     # MCP 任务组 + 抓取调度器
     from rag.crawl.crawler import start_scheduler, shutdown_scheduler
     start_scheduler()
+    # module-080：反向闭环定时扫描（低分题→待学笔记→优先级抓取）
+    from rag.crawl.feedback_scanner import setup_feedback_scheduler
+    setup_feedback_scheduler(True)
     mcp_http_ctx = mcp_http_lifespan()
     await mcp_http_ctx.__aenter__()
     try:
@@ -157,6 +162,7 @@ async def lifespan(app: FastAPI):
     finally:
         await mcp_http_ctx.__aexit__(None, None, None)
         shutdown_scheduler()
+        setup_feedback_scheduler(False)
     logger.info("AI 服务关闭")
 
 
@@ -909,7 +915,64 @@ async def submit_feedback(request: FeedbackRequest, fastapi_req: Request):
         return JSONResponse(status_code=500, content={"message": "反馈保存失败"})
 
 
+
+
+
+
+
+@app.post("/ai/feedback/scan")
+async def trigger_feedback_scan():
+    """手动触发一轮反向闭环扫描（低分题→待学笔记→优先级队列入队；调试/手动）
+
+    fail-open：扫描整体失败返回 code=1 + 零汇总，不影响其他请求。
+    """
+    try:
+        from rag.crawl.feedback_scanner import scan_and_generate
+        data = await scan_and_generate()
+        return {"code": 0, "data": data}
+    except Exception as e:
+        logger.error("反向闭环扫描失败: %s", e, exc_info=True)
+        return {"code": 1, "message": "反向闭环扫描失败",
+                "data": {"scanned": 0, "noted": 0, "enqueued": 0, "errors": 1}}
+# ─── 待学笔记端点（module-080 反向闭环） ───
+
+@app.post("/ai/weak-topics/ingest")
+async def ingest_weak_topic(req: WeakTopicIngestRequest, fastapi_req: Request):
+    """录入待学笔记（低分题→待学笔记→抓取优先级提升）
+
+    手动或自动录入弱题主题，写入 documents 表（source=weak_topic:<identity>:）。
+    identity 优先从 request.state 取（user_id > client_ip），请求体可覆盖。
+    """
+    try:
+        from rag.memory.weak_topics import save_weak_topic
+        identity = req.identity or resolve_identity(fastapi_req)
+        result = await save_weak_topic(topic=req.topic, context=req.context or "", identity=identity)
+        return {"code": 0, "msg": "success", "data": result}
+    except ValueError as e:
+        return {"code": 1, "msg": str(e)}
+    except Exception as e:
+        logger.error("待学笔记录入失败: %s", e, exc_info=True)
+        return JSONResponse(status_code=500, content={"code": 1, "msg": "待学笔记录入失败"})
+
+
+@app.get("/ai/weak-topics")
+async def list_weak_topics(identity: Optional[str] = None):
+    """列出待学笔记（按身份隔离）
+
+    Args:
+        identity: 身份标识（可选，不传则返回所有身份的待学笔记）
+    """
+    try:
+        from rag.memory.weak_topics import recall_weak_topics
+        topics = await recall_weak_topics(identity=identity)
+        return {"code": 0, "msg": "success", "data": {"topics": topics}}
+    except Exception as e:
+        logger.error("读取待学笔记失败: %s", e, exc_info=True)
+        return JSONResponse(status_code=500, content={"code": 1, "msg": "读取待学笔记失败"})
+
+
 @app.post("/ai/rag/documents")
+
 async def add_document(title: str = Body(...), content: str = Body(...), source: str = Body(default="")):
     """添加文档到知识库（向量化后自动入库）"""
     result = await rag_engine.add_document(title, content, source)
@@ -1050,33 +1113,39 @@ class CrawlSourceRequest(BaseModel):
         url_pattern: URL 前缀模式（如 https://spring.io/docs）
         name: 人类可读名称（可选）
         max_depth: 最大抓取深度（0-5，默认 1；0=仅种子页，module-076）
+        priority: 抓取优先级（默认 0，数字越大越优先，module-080）
     """
     url_pattern: str
     name: str = ""
     max_depth: int = 1
+    priority: int = 0
+
 
 
 
 @app.post("/ai/crawl/sources")
 async def add_crawl_source(req: CrawlSourceRequest):
-    """添加抓取源配置（max_depth：0=仅种子页，1=种子+一层，2-5 更深）"""
+    """添加抓取源配置（max_depth：0=仅种子页，1=种子+一层，2-5 更深；priority：抓取优先级）"""
     if not req.url_pattern.strip():
         return {"code": 1, "msg": "url_pattern 不能为空"}
     if not req.url_pattern.lower().startswith(("http://", "https://")):
         return {"code": 1, "msg": "url_pattern 必须以 http:// 或 https:// 开头"}
     if not 0 <= req.max_depth <= CRAWL_DEPTH_API_MAX:
         return {"code": 1, "msg": f"max_depth 取值范围 0-{CRAWL_DEPTH_API_MAX}"}
+    if req.priority < 0:
+        return {"code": 1, "msg": "priority 不能为负数"}
 
     from sqlalchemy import text
     async with async_session_factory() as session:
         await session.execute(
-            text("INSERT INTO source_configs (url_pattern, name, max_depth) VALUES (:url, :name, :depth)"),
-            {"url": req.url_pattern.strip(), "name": req.name.strip(), "depth": req.max_depth},
+            text("INSERT INTO source_configs (url_pattern, name, max_depth, priority) VALUES (:url, :name, :depth, :priority)"),
+            {"url": req.url_pattern.strip(), "name": req.name.strip(), "depth": req.max_depth, "priority": req.priority},
         )
         await session.commit()
 
-    logger.info("添加抓取源: %s (%s, max_depth=%d)", req.name, req.url_pattern[:80], req.max_depth)
-    return {"code": 0, "msg": "success", "data": {"url_pattern": req.url_pattern, "name": req.name, "max_depth": req.max_depth}}
+    logger.info("添加抓取源: %s (%s, max_depth=%d, priority=%d)", req.name, req.url_pattern[:80], req.max_depth, req.priority)
+    return {"code": 0, "msg": "success", "data": {"url_pattern": req.url_pattern, "name": req.name, "max_depth": req.max_depth, "priority": req.priority}}
+
 
 
 
@@ -1087,7 +1156,7 @@ async def list_crawl_sources():
     from sqlalchemy import text
     async with async_session_factory() as session:
         result = await session.execute(
-            text("SELECT id, url_pattern, name, enabled, max_depth, last_crawled_at, created_at FROM source_configs ORDER BY id")
+            text("SELECT id, url_pattern, name, enabled, max_depth, last_crawled_at, created_at, priority FROM source_configs ORDER BY id")
         )
         rows = result.fetchall()
         sources = [
@@ -1096,10 +1165,12 @@ async def list_crawl_sources():
                 "enabled": r[3], "max_depth": r[4],
                 "last_crawled_at": r[5].isoformat() if r[5] else None,
                 "created_at": r[6].isoformat() if r[6] else None,
+                "priority": r[7] if len(r) > 7 and r[7] is not None else 0,
             }
             for r in rows
         ]
     return {"code": 0, "msg": "success", "data": {"sources": sources}}
+
 
 
 @app.post("/ai/crawl/run")
