@@ -399,11 +399,20 @@ class Settings(BaseSettings):
     feedback_low_score_threshold: int = 60
     feedback_scan_interval_minutes: int = 1440
     feedback_http_timeout_s: float = 10
+    feedback_internal_token: str = ""
+
+    # reverse-feedback 增强（module-080 反向闭环，检索-学习-面试回流）：
     feedback_learning_identity: str = "learning"
     feedback_search_url_template: str = "https://www.bing.com/search?q={query}"
     feedback_priority_crawl_depth: int = 1
     feedback_priority_max_per_run: int = 5
-    feedback_internal_token: str = ""
+
+    # SAG 检索模式（module-081 / SQL-Retrieval Augmented Generation）：
+    #   hybrid    —— 现有三通道 RRF 融合（默认，零回归）
+    #   sag       —— 纯 SAG 检索（实体/事件/关系 SQL join，替代三通道）
+    #   hybrid_sag —— 三通道 RRF + SAG 补充（取并集去重，SAG 命中优先置前）
+    # PW_RETRIEVAL_MODE 环境变量回退覆盖。
+    retrieval_mode: Literal["hybrid", "sag", "hybrid_sag"] = "hybrid"
 
     model_config = {"env_prefix": "PW_", "env_file": ".env"}
 

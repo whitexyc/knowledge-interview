@@ -205,4 +205,10 @@ async def ingest_document(
         result["canonical"] = False
     else:
         result["dup_kind"] = None
+    # SAG hook（module-081）：retrieval_mode in ("sag", "hybrid_sag") 时
+    # 异步 fire-and-forget 抽取实体/事件入库；fail-open 不阻断主链路
+    if settings.retrieval_mode in ("sag", "hybrid_sag") and result.get("id"):
+        import asyncio
+        from rag.retrieval.sag_extractor import ingest_sag_data
+        asyncio.create_task(ingest_sag_data(result["id"], normalized))
     return result

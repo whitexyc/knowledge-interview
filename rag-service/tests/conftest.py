@@ -252,8 +252,19 @@ def default_antibot_mocks(monkeypatch):
     monkeypatch.setattr(settings, "crawl_proxies", "")
     monkeypatch.setattr(settings, "crawl_robots_cache_ttl", 0)
     monkeypatch.setattr(settings, "crawl_user_agents", "")
+    monkeypatch.setattr(settings, "crawl_request_delay_seconds", 0)  # module-077: 防测试限速延迟
     monkeypatch.setattr(
         "rag.crawl.crawler._check_robots_allowed",
         AsyncMock(return_value=True),
-    )
-    monkeypatch.setattr(settings, "crawl_request_delay_seconds", 0)  # module-077: 防测试限速延迟
+    )  # module-076/077: 反爬机器人检查恒放行（module-081 修复轮恢复——Developer 误删）
+
+@pytest.fixture(autouse=True)
+def default_retrieval_mode_hybrid(monkeypatch):
+    """测试环境统一钉住检索模式=hybrid（module-081，对齐 056/058 模式）
+
+    生产默认 hybrid（零回归），但显式钉住防 SAG 相关测试环境意外
+    触发真实 DB 查询。新测试（test_sag.py）体内显式 setattr 覆盖。
+    """
+    from src.config import settings
+
+    monkeypatch.setattr(settings, "retrieval_mode", "hybrid")

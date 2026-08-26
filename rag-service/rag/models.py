@@ -237,3 +237,63 @@ class VerifyResult(Base):
 
     def __repr__(self) -> str:
         return f"<VerifyResult id={self.id} task_id={self.task_id!r} status={self.status!r}>"
+
+
+class SagEntity(Base):
+    """SAG 实体模型 — 文档入库时 LLM 抽取（module-081）
+
+    实体类型 11 类：concept/technology/algorithm/framework/tool/person/
+    company/language/event/metric/method。source_doc_ids JSONB 存关联文档
+    ID 列表，同一实体出现在多篇文档时追加去重。
+    """
+
+    __tablename__ = "sag_entities"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="实体 ID")
+    name = Column(String(256), nullable=False, comment="实体名")
+    entity_type = Column(String(32), nullable=False, comment="实体类型")
+    source_doc_ids = Column(JSONB, nullable=False, default=list,
+                            comment="关联文档 ID 列表（JSONB 数组）")
+    created_at = Column(
+        DateTime(timezone=True), server_default=func.now(), comment="创建时间"
+    )
+
+    def __repr__(self) -> str:
+        return f"<SagEntity id={self.id} name={self.name!r} type={self.entity_type!r}>"
+
+
+class SagEvent(Base):
+    """SAG 事件模型 — 文档内容中的事件/动作描述（module-081）"""
+
+    __tablename__ = "sag_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="事件 ID")
+    event_text = Column(Text, nullable=False, comment="事件描述文本")
+    entity_ids = Column(JSONB, nullable=False, default=list,
+                        comment="关联实体 ID 列表（JSONB 数组）")
+    source_doc_id = Column(Integer, nullable=False, comment="来源文档 ID")
+    created_at = Column(
+        DateTime(timezone=True), server_default=func.now(), comment="创建时间"
+    )
+
+    def __repr__(self) -> str:
+        return f"<SagEvent id={self.id} text={self.event_text[:40]!r}>"
+
+
+class SagRelation(Base):
+    """SAG 关系模型 — 实体间关系，一跳 join 检索（module-081）"""
+
+    __tablename__ = "sag_relations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="关系 ID")
+    source_entity_id = Column(Integer, nullable=False, comment="源实体 ID")
+    target_entity_id = Column(Integer, nullable=False, comment="目标实体 ID")
+    relation_type = Column(String(64), nullable=False, comment="关系类型")
+    source_doc_id = Column(Integer, nullable=False, comment="来源文档 ID")
+    created_at = Column(
+        DateTime(timezone=True), server_default=func.now(), comment="创建时间"
+    )
+
+    def __repr__(self) -> str:
+        return (f"<SagRelation id={self.id} "
+                f"src={self.source_entity_id} tgt={self.target_entity_id}>")

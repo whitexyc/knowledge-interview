@@ -884,6 +884,27 @@ class RAGEngine:
 
             search_text = hyde_query if round_num == 0 else current_query
 
+            # SAG 分支（module-081）：retrieval_mode 为 sag/hybrid_sag 时
+            # round 0 额外执行 SAG 检索（实体匹配 + 一跳关系）
+            if round_num == 0 and settings.retrieval_mode in ("sag", "hybrid_sag"):
+                try:
+                    from rag.retrieval.sag_retriever import retrieve as sag_retrieve
+                    sag_docs = await asyncio.wait_for(sag_retrieve(query, top_k=top_k), timeout=15)
+                    if sag_docs:
+                        logger.info("SAG 检索命中 %d 篇文档", len(sag_docs))
+                except Exception as e:
+                    logger.warning("SAG 检索失败，降级: %s", e)
+                    sag_docs = []
+                # 合并 SAG 结果（hybrid_sag 模式补充，sag 模式纯替代）
+                for sd in (sag_docs or []):
+                    doc_id = sd.get("id")
+                    if doc_id and doc_id not in existing_ids:
+                        all_docs.append(sd)
+                        existing_ids.add(doc_id)
+                # 纯 sag 模式跳过常规三通道
+                if settings.retrieval_mode == "sag":
+                    break
+
             # Round 0: 并行向量检索 + 图搜索
             if round_num == 0:
                 if settings.retrieval_fusion_mode != "hybrid":

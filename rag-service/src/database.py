@@ -278,7 +278,8 @@ async def init_db():
     logger.info("crawl_priority 队列表已就绪（module-080 反向闭环）")
     await ensure_documents_embedding_hnsw_index()
     logger.info("documents 表 embedding HNSW 索引已就绪（backlog P2 修复）")
-
+    await ensure_sag_tables()
+    logger.info("SAG 三表已就绪（module-081 sag_entities/sag_events/sag_relations）")
 
 # documents.embedding HNSW 索引（backlog P2 修复，2026-08-26）：
 # 检索/去重均走 ORDER BY embedding <=> :vec LIMIT k，无索引时是 14k+ 行顺序扫描。
@@ -428,6 +429,72 @@ async def ensure_priority_queue_table() -> None:
         for stmt in statements:
             await session.execute(text(stmt))
         await session.commit()
+
+
+# SAG 三表 DDL（module-081 / SQL-Retrieval Augmented Generation）：
+# sag_entities / sag_events / sag_relations，CREATE TABLE IF NOT EXISTS 幂等。
+# source_doc_ids / entity_ids 用 JSONB 存关联 ID 列表，追加去重由应用层控制。
+# GIN 索引 on sag_entities(name) 支持 ILIKE 模糊匹配查询实体。
+SAG_ENTITIES_DDL = """
+CREATE TABLE IF NOT EXISTS sag_entities (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(256) NOT NULL,
+    entity_type VARCHAR(32) NOT NULL,
+    source_doc_ids JSONB NOT NULL DEFAULT '[]',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_sag_entities_name_gin ON sag_entities USING gin (name gin_trgm_ops);
+COMMENT ON TABLE sag_entities IS 'SAG 实体表（文档入库时 LLM 抽取，SQL join 检索入口）——module-081';
+COMMENT ON COLUMN sag_entities.name IS '实体名（如 "G1 GC", "Kafka"）';
+COMMENT ON COLUMN sag_entities.entity_type IS '实体类型：concept/technology/algorithm/framework/tool/person/company/language/event/metric/method';
+COMMENT ON COLUMN sag_entities.source_doc_ids IS '关联文档 ID 列表（JSONB 数组，追加去重）';
+"""
+
+SAG_EVENTS_DDL = """
+CREATE TABLE IF NOT EXISTS sag_events (
+    id BIGSERIAL PRIMARY KEY,
+    event_text TEXT NOT NULL,
+    entity_ids JSONB NOT NULL DEFAULT '[]',
+    source_doc_id INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+COMMENT ON TABLE sag_events IS 'SAG 事件表（文档内容中的事件/动作描述）——module-081';
+COMMENT ON COLUMN sag_events.event_text IS '事件描述文本';
+COMMENT ON COLUMN sag_events.entity_ids IS '关联实体 ID 列表（JSONB 数组）';
+COMMENT ON COLUMN sag_events.source_doc_id IS '来源文档 ID';
+"""
+
+SAG_RELATIONS_DDL = """
+CREATE TABLE IF NOT EXISTS sag_relations (
+    id BIGSERIAL PRIMARY KEY,
+    source_entity_id INTEGER NOT NULL,
+    target_entity_id INTEGER NOT NULL,
+    relation_type VARCHAR(64) NOT NULL,
+    source_doc_id INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_sag_relations_source ON sag_relations(source_entity_id);
+CREATE INDEX IF NOT EXISTS idx_sag_relations_target ON sag_relations(target_entity_id);
+COMMENT ON TABLE sag_relations IS 'SAG 关系表（实体间关系，一跳 join 检索）——module-081';
+COMMENT ON COLUMN sag_relations.source_entity_id IS '源实体 ID';
+COMMENT ON COLUMN sag_relations.target_entity_id IS '目标实体 ID';
+COMMENT ON COLUMN sag_relations.relation_type IS '关系类型';
+COMMENT ON COLUMN sag_relations.source_doc_id IS '来源文档 ID';
+"""
+
+
+async def ensure_sag_tables() -> None:
+    """幂等创建 SAG 三表 + GIN 索引（与 feedback 同款拆分执行模式）"""
+    # 先启用 pg_trgm 扩展（GIN 索引依赖）
+    async with async_session_factory() as session:
+        await session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        await session.commit()
+    for ddl in [SAG_ENTITIES_DDL, SAG_EVENTS_DDL, SAG_RELATIONS_DDL]:
+        statements = [s.strip() for s in ddl.split(";") if s.strip()]
+        async with async_session_factory() as session:
+            for stmt in statements:
+                await session.execute(text(stmt))
+            await session.commit()
 
 
 
