@@ -102,6 +102,7 @@ def _retrieve_cache_key(query: str, top_k: int, min_score: float) -> str:
 _RETRIEVE_BUDGET_SECONDS = 30.0  # 整链路检索总预算（秒），超预算用已收集 docs 提前结束
 _MIN_DOCS_SKIP_REFLECT = 3       # round 0 已收集文档数达到该值，跳过反思与后续轮次
 _HYDE_CACHE_TTL = 300            # HyDE 缓存 TTL（秒），与检索结果缓存一致
+_SAG_SCORE_BOOST = 1.2           # module-082: SAG 命中项 hybrid_score 轻 boost 系数
 
 # ── L3 后置校验（module-043 / ADR-0003）配置 ──
 _L3_ABS_COSINE_THRESHOLD = 0.3   # 精排 top-1 绝对余弦低于该值 → 疑似误判标记
@@ -251,11 +252,41 @@ class RAGEngine:
             # 限制 top_k 范围，防止恶意请求打爆数据库
             top_k = max(1, min(request.top_k, 50))
 
-            # 先取 2 倍数量，给 rerank 留出裁剪空间
-            # 因为 rerank 比 embedding 更准，但速度慢，所以先粗筛再精排
-            results = await hybrid_retriever.retrieve(
-                request.query, top_k=top_k * 2 if top_k > 1 else top_k,
-            )
+            # module-082: search 端点感知 retrieval_mode
+            sag_docs: list[dict] = []
+            if settings.retrieval_mode in ("sag", "hybrid_sag"):
+                try:
+                    from rag.retrieval.sag_retriever import retrieve as sag_retrieve
+                    sag_docs = await asyncio.wait_for(
+                        sag_retrieve(request.query, top_k=top_k * 2), timeout=15,
+                    )
+                    if sag_docs:
+                        # 子任务 3：SAG 命中项 score boost
+                        for sd in sag_docs:
+                            sd["hybrid_score"] = min(
+                                sd.get("hybrid_score", sd.get("score", 0.0)) * _SAG_SCORE_BOOST, 1.0,
+                            )
+                        logger.info("search SAG 检索命中 %d 篇文档", len(sag_docs))
+                except Exception as e:
+                    logger.warning("search SAG 检索失败，降级: %s", e)
+                    sag_docs = []
+
+            # 常规检索（hybrid/hybrid_sag 走 hybrid_retriever；sag 跳过）
+            if settings.retrieval_mode != "sag":
+                regular = await hybrid_retriever.retrieve(
+                    request.query, top_k=top_k * 2 if top_k > 1 else top_k,
+                )
+            else:
+                regular = []
+
+            # 合并：SAG 在前 + 常规在后，去重
+            existing_ids: set = set()
+            results: list[dict] = []
+            for doc in sag_docs + regular:
+                doc_id = doc.get("id")
+                if doc_id and doc_id not in existing_ids:
+                    results.append(doc)
+                    existing_ids.add(doc_id)
 
             # 有足够候选时才做 rerank，否则直接返回
             if results and top_k < len(results):
@@ -265,7 +296,6 @@ class RAGEngine:
                     logger.warning("Rerank 失败，使用原始排序: %s", e)
             elif not results:
                 return SearchResponse(results=[], message="未检索到相关内容")
-
             # 父块映射：子块命中 → 父块返回（完整 section 语义）
             results = await self._expand_to_parents(results)
 
@@ -896,12 +926,15 @@ class RAGEngine:
                     logger.warning("SAG 检索失败，降级: %s", e)
                     sag_docs = []
                 # 合并 SAG 结果（hybrid_sag 模式补充，sag 模式纯替代）
+                # module-082: SAG 命中项 score boost
                 for sd in (sag_docs or []):
+                    sd["hybrid_score"] = min(
+                        sd.get("hybrid_score", sd.get("score", 0.0)) * _SAG_SCORE_BOOST, 1.0,
+                    )
                     doc_id = sd.get("id")
                     if doc_id and doc_id not in existing_ids:
                         all_docs.append(sd)
                         existing_ids.add(doc_id)
-                # 纯 sag 模式跳过常规三通道
                 if settings.retrieval_mode == "sag":
                     break
 
