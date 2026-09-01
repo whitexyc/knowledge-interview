@@ -146,6 +146,22 @@ class Settings(BaseSettings):
     # autouse fixture 钉住 false（测试不污染落库）。
     tool_call_logs_enabled: bool = True
 
+    # 工具默认超时（module-083 WP-C）：AgentTool.timeout 缺省值来源——现有
+    # 10 工具不传 → 全 15.0（零行为变化）；测量调优不在本模块（tool_call_logs
+    # 已记 duration_ms，module-085 看板拉 P95 后按数据调整各工具值）。
+    # 环境变量：PW_TOOL_DEFAULT_TIMEOUT。
+    tool_default_timeout: float = 15.0
+
+    # 工具幂等（module-083 WP-B）：同参只读检索二次调用拦截（执行成功后才记
+    # 指纹，指纹集合每请求独立、跨请求不共享）；false 回退"同参每次执行"存量
+    # 行为（逃生口）。
+    tool_idempotency_enabled: bool = True
+
+    # 高风险工具审批（module-083 WP-D）：approval="required" 工具执行前需
+    # 人工审批（approval_requests 表 + /ai/tools/approvals 端点）；现有 10
+    # 工具全 "auto" 短路零 DB 开销。false 回退"required 也直接执行"（逃生口）。
+    tool_approval_enabled: bool = True
+
     # 长期记忆（module-033/035）：提取 / 去重 / 动态K 阈值（参考 llm-push/19-Agent记忆管理）
     memory_importance_threshold: float = 0.6    # 提取事实 importance < 0.6 丢弃
     # module-035 校准：真实 bge-m3 同义改写 cosine≈0.88，0.95 太严导致漏去重 → 下调 0.85

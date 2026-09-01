@@ -74,6 +74,18 @@ class ChainUpdateRequest(BaseModel):
     chain: list[str]
 
 
+class ApprovalDecisionRequest(BaseModel):
+    """工具审批决定请求体（module-083 WP-D）
+
+    Attributes:
+        id: approval_requests 表主键
+        action: "approve" 放行 / "reject" 拒绝
+    """
+
+    id: int
+    action: str
+
+
 async def load_fallback_chain_from_redis() -> None:
     """启动时从 Redis 加载持久化降级链（module-029）
 
@@ -1197,7 +1209,62 @@ async def trigger_crawl():
         },
     }
 
+# ─── 工具审批端点（module-083 WP-D 高风险审批，机制预留） ───
+# 现有 10 内置工具 approval 全 "auto"（执行前不查本表）；approval="required"
+# 工具（module-084 外部 MCP 工具预留）每次调用会插 pending 申请，由人/工作流
+# 在以下端点审批。鉴权与现有 /ai 端点同等待遇（强鉴权留 module-084）。
 
+
+@app.get("/ai/tools/approvals")
+async def list_tool_approvals(status: str = "pending"):
+    """列出高风险工具审批申请（默认 pending；?status=approved/rejected 过滤生效）"""
+    from sqlalchemy import text
+    async with async_session_factory() as session:
+        rows = (await session.execute(
+            text("SELECT id, tool_name, args, status, requester, requested_at, "
+                 "decided_at FROM approval_requests WHERE status=:s ORDER BY id"),
+            {"s": status},
+        )).fetchall()
+    approvals = [
+        {
+            "id": r[0], "tool_name": r[1], "args": r[2], "status": r[3],
+            "requester": r[4],
+            "requested_at": r[5].isoformat() if r[5] else None,
+            "decided_at": r[6].isoformat() if r[6] else None,
+        }
+        for r in rows
+    ]
+    return {"code": 0, "msg": "success", "data": {"approvals": approvals}}
+
+
+@app.post("/ai/tools/approvals")
+async def decide_tool_approval(req: ApprovalDecisionRequest):
+    """审批工具调用申请：action=approve 放行 / reject 拒绝（module-083 WP-D）
+
+    非法 action / id 不存在 / 已处理（非 pending）→ code 1 提示不崩；
+    approve/reject 成功后置 decided_at=now（SQL CURRENT_TIMESTAMP）。
+    """
+    if req.action not in ("approve", "reject"):
+        return {"code": 1, "msg": "非法 action（仅支持 approve/reject）"}
+    from sqlalchemy import text
+    async with async_session_factory() as session:
+        row = (await session.execute(
+            text("SELECT id, status FROM approval_requests WHERE id=:i"),
+            {"i": req.id},
+        )).first()
+        if row is None:
+            return {"code": 1, "msg": f"审批申请不存在（id={req.id}）"}
+        if row[1] != "pending":
+            return {"code": 1, "msg": f"审批申请已处理（当前状态 {row[1]}）"}
+        new_status = "approved" if req.action == "approve" else "rejected"
+        await session.execute(
+            text("UPDATE approval_requests SET status=:s, decided_at=CURRENT_TIMESTAMP WHERE id=:i"),
+            {"s": new_status, "i": req.id},
+        )
+        await session.commit()
+    logger.info("工具审批决定: id=%d action=%s → status=%s",
+                req.id, req.action, new_status)
+    return {"code": 0, "msg": "success", "data": {"id": req.id, "status": new_status}}
 
 
 if __name__ == "__main__":

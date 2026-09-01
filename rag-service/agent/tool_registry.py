@@ -18,9 +18,14 @@ Agent 工具注册表 — ToolRegistry（module-028）
      re_search / note_to_self
 """
 import asyncio
+import hashlib
 import json
 import logging
 from typing import Callable, Optional
+
+from jsonschema import ValidationError
+from jsonschema import validate as _js_validate
+
 
 from src.config import settings
 from rag.engine import rag_engine
@@ -36,6 +41,107 @@ logger = logging.getLogger(__name__)
 # 异常自动重试 1 次。排除清单比白名单简单：未来新工具默认继承重试。
 _NO_RETRY_TOOLS = {"generate_answer", "verify_answer"}
 
+# module-083（WP-B）：幂等启用清单——只读检索 7 工具（用户确认口径）。
+# generate_answer / verify_answer / note_to_self 排除：每次调用语义不同
+# （生成/验证结果随 docs 变化）或已有内容级去重（module-041 scratchpad）。
+_IDEMPOTENT_TOOLS = {
+    "search_knowledge", "search_fts", "search_vector", "search_graph",
+    "extract_entities", "recall_memory", "re_search",
+}
+
+
+# ─── module-083 工具治理辅助（校验 / 幂等 / 审批，均模块级便于测试 monkeypatch） ───
+
+
+def _fingerprint(name: str, args: dict) -> Optional[str]:
+    """幂等指纹 —— sha256(name + "|" + args 规范化 JSON)（module-083 WP-B）
+
+    sort_keys=True 保证参数键序无关（{"a":1,"b":2} 与 {"b":2,"a":1} 同一指纹）。
+    args 非 JSON 序列化（罕见——LLM 参数来自 tool_calls 必为 JSON，理论不可达）
+    → 返回 None 跳过幂等直接执行（防御，不阻断工具链路）。
+    """
+    try:
+        payload = json.dumps(args, sort_keys=True, ensure_ascii=False)
+    except TypeError:
+        return None
+    return hashlib.sha256(f"{name}|{payload}".encode("utf-8")).hexdigest()
+
+
+def _schema_error(name: str, args: dict, schema: Optional[dict]) -> Optional[str]:
+    """校验工具参数是否符合 args_schema（module-083 WP-A），违规返回提示
+
+    jsonschema 校验**已提供的参数**：schema 的 required 置空（浅拷贝不动原
+    对象）——工具实现里 query 等"缺省回退 ctx.query"是设计契约（存量
+    run({}, None) 与 MCP 外部调用依赖），强制 required 会把"静默回退"变
+    "报错拒绝"。非 dict args → "参数应为 object"。jsonschema 自身异常
+    （版本差异等）→ fail-open：warning + 放行执行（依赖层异常不能拖垮
+    工具链路）。
+    """
+    if not isinstance(args, dict):
+        return f"(工具 {name} 参数错误: 参数应为 object)"
+    if not schema:
+        return None
+    try:
+        _js_validate(args, {**schema, "required": []})
+    except ValidationError as e:
+        return f"(工具 {name} 参数错误: {e.message})"
+    except Exception as e:
+        logger.warning("工具 %s schema 校验异常（fail-open 放行）: %s", name, e)
+    return None
+
+
+async def _approval_allowed(name: str) -> bool:
+    """高风险工具审批放行判定（module-083 WP-D）——工具级
+
+    存在 status='approved' 记录（最近一条）即放行；DB 异常 → fail-closed
+    拒绝（审批类工具属可能副作用类，宁拒勿放，安全侧；与 tool_call_logs
+    观测路径 fail-open 语义严格区分）。仅 approval="required" 工具调用
+    （auto 短路零 DB 开销）。
+    """
+    from sqlalchemy import text
+    from src.database import async_session_factory
+    try:
+        async with async_session_factory() as session:
+            row = (await session.execute(
+                text("SELECT 1 FROM approval_requests WHERE tool_name=:n "
+                     "AND status='approved' ORDER BY decided_at DESC LIMIT 1"),
+                {"n": name},
+            )).first()
+        return row is not None
+    except Exception as e:
+        logger.warning("审批放行查询失败（fail-closed 拒绝执行）: %s", e)
+        return False
+
+
+async def _request_approval(name: str, args: dict, requester: str) -> None:
+    """插入一条审批申请（同 tool_name 已有 pending 不重复插入，module-083 WP-D）
+
+    落库失败仅日志告警（fail-open，观测/工作流路径语义：申请失败不阻断 LLM
+    循环——执行已被审批闸拒绝、提示已返回）。SQL 全参数化防注入。
+    """
+    from sqlalchemy import text
+    from src.database import async_session_factory
+    try:
+        args_json = json.dumps(args, ensure_ascii=False)
+    except TypeError:  # 防御：非 JSON 序列化参数 → 兜底 {}
+        args_json = "{}"
+    try:
+        async with async_session_factory() as session:
+            exists = (await session.execute(
+                text("SELECT 1 FROM approval_requests WHERE tool_name=:n "
+                     "AND status='pending' LIMIT 1"),
+                {"n": name},
+            )).first()
+            if exists is not None:
+                return  # 同工具已有 pending 申请 → 不重复插入
+            await session.execute(
+                text("INSERT INTO approval_requests (tool_name, args, status, requester) "
+                     "VALUES (:n, CAST(:args AS jsonb), 'pending', :r)"),
+                {"n": name, "args": args_json, "r": requester},
+            )
+            await session.commit()
+    except Exception as e:
+        logger.warning("审批申请落库失败（fail-open，不影响循环）: %s", e)
 
 class AgentTool:
     """单个 Agent 工具
@@ -48,10 +154,13 @@ class AgentTool:
         group: 所属执行阶段集合（module-058 / ADR-0012 方案 A）——
             "retrieval" / "generation"，双组工具 ["retrieval","generation"]；
             空集合 = 未分组，全阶段可见（向后兼容）
+        timeout: 单次执行超时秒数（module-083 WP-C；缺省 settings.tool_default_timeout）
+        approval: 审批模式（module-083 WP-D）："auto" 直接执行 / "required" 需人工审批
     """
 
     def __init__(self, name: str, description: str, args_schema: dict,
-                 func: Callable, group: Optional[list] = None):
+                 func: Callable, group: Optional[list] = None,
+                 timeout: Optional[float] = None, approval: str = "auto"):
         self.name = name
         self.description = description
         self.args_schema = args_schema
@@ -59,6 +168,12 @@ class AgentTool:
         # module-058：阶段归组（检索组 7 / 生成组 4，re_search 双组）。
         # 只影响暴露逻辑（to_llm_schemas 过滤），工具本身行为一字不改。
         self.group: set[str] = set(group) if group else set()
+        # module-083 WP-C：工具级超时——config 是新工具默认值来源（现有 10
+        # 工具不传 → 全 settings.tool_default_timeout=15.0，零行为变化）
+        self.timeout: float = timeout if timeout is not None else settings.tool_default_timeout
+        # module-083 WP-D：审批模式——默认 "auto" 短路零 DB 开销；"required"
+        # 为 module-084 外部 MCP 工具（可能有副作用）的人工审批闸预留
+        self.approval: str = approval
 
     async def run(self, args: dict, ctx) -> str:
         """执行工具；失败返回空结果，LLM 判断继续/放弃（module-028 降级哲学）
@@ -68,36 +183,100 @@ class AgentTool:
         瞬时抖动（429/网络闪断），重试大概率成功；note_to_self 重试安全依赖
         WP-A 去重拦双写；generate_answer/verify_answer 不重试（_NO_RETRY_TOOLS，
         15s 超时是常态）。**超时不重试**：超时=慢不是抖动（LLM 生成/rerank 慢），
-        重试不修复根因只把单工具墙钟翻倍到 30s，且 15s 是预算围栏语义（module-042）。
+        重试不修复根因只把单工具墙钟翻倍到 30s，且超时是预算围栏语义（module-042）。
         TimeoutError 分支必须先于重试分支判断（存量超时测试精确文案兼容前提）。
         重试发生在 run 内部 → 对 react_loop 完全不可见：不增加 tool_count /
         phase_count / 消息历史（tool 结果消息每 call 一条）。
 
+        module-083：执行前 _precheck 三闸（审批 → schema 校验 → 幂等拦截），
+        任一拦截返回提示文本（喂回 LLM，不真执行、不进重试分支）；执行成功后
+        记幂等指纹（失败返回空串 / 超时提示不记 → 同参可重放，与 073 重试自洽）。
+
         Args:
             args: LLM 传入的工具参数（已由 args_schema 描述）
-            ctx: ReAct 循环的会话上下文（见 react.ReactContext）
+            ctx: ReAct 循环的会话上下文（见 react.ReactContext；存量测试形态
+                可为 None，_precheck/记指纹均 getattr 短路）
 
         Returns:
             工具结果文本；执行失败返回 ""
         """
+        pre = await self._precheck(args, ctx)
+        if pre is not None:
+            return pre
+        result = await self._execute(args, ctx)
+        self._record_fingerprint(args, ctx, result)
+        return result
+
+    async def _precheck(self, args: dict, ctx) -> Optional[str]:
+        """执行前守门三闸：审批 → schema 校验 → 幂等拦截（module-083）
+
+        总序（规划 §7）：审批闸（仅 approval="required" 工具，auto 短路零 DB
+        开销）→ 参数校验（WP-A，置空 required 保留"缺省回退"契约）→ 幂等
+        拦截（WP-B，同参二次只读检索返回提示）。任一拦截返回提示文本喂回 LLM
+        （不进 073 重试分支——重试在 _execute 内）；None = 放行。
+        """
+        if settings.tool_approval_enabled and self.approval == "required" \
+                and not await _approval_allowed(self.name):
+            requester = getattr(ctx, "identity", "")
+            await _request_approval(self.name, args, requester)
+            return f"(工具 {self.name} 需人工审批，调用申请已提交)"
+        err = _schema_error(self.name, args, self.args_schema)
+        if err is not None:
+            return err
+        if settings.tool_idempotency_enabled:
+            fp_set = getattr(ctx, "executed_fingerprints", None)
+            if fp_set is not None and self.name in _IDEMPOTENT_TOOLS:
+                fp = _fingerprint(self.name, args)
+                if fp is not None and fp in fp_set:
+                    return "(该调用已执行过，结果见上文)"
+        return None
+
+    async def _execute(self, args: dict, ctx) -> str:
+        """工具执行主体（module-073 重试语义原样搬入；WP-C 超时参数化）
+
+        首试 wait_for(self.timeout)；超时（永不重试）返回精确文案
+        "(工具 X 执行超时)"、失败返回 ""——存量测试逐字断言，一字不改；
+        异常（非超时）且开关开且不在排除清单 → 同 func 同参自动重试 1 次。
+        """
         try:
-            return await asyncio.wait_for(self.func(ctx, args), timeout=15)
+            return await asyncio.wait_for(self.func(ctx, args), timeout=self.timeout)
         except asyncio.TimeoutError:
-            logger.warning("工具 %s 超时 (15s)", self.name)
+            logger.warning("工具 %s 超时 (%ss)", self.name, self.timeout)
             return f"(工具 {self.name} 执行超时)"
         except Exception as e:
             if settings.tool_auto_retry and self.name not in _NO_RETRY_TOOLS:
                 logger.warning("工具 %s 首次失败，自动重试: %s", self.name, e)
                 try:
-                    return await asyncio.wait_for(self.func(ctx, args), timeout=15)
+                    return await asyncio.wait_for(self.func(ctx, args), timeout=self.timeout)
                 except asyncio.TimeoutError:
-                    logger.warning("工具 %s 重试超时 (15s)", self.name)
+                    logger.warning("工具 %s 重试超时 (%ss)", self.name, self.timeout)
                     return f"(工具 {self.name} 执行超时)"
                 except Exception as e2:
                     logger.warning("工具 %s 重试仍失败，返回空: %s", self.name, e2)
                     return ""
             logger.warning("工具 %s 执行失败，返回空: %s", self.name, e)
             return ""
+
+    def _record_fingerprint(self, args: dict, ctx, result: str) -> None:
+        """成功执行后记幂等指纹（module-083 WP-B）
+
+        成功 = 非空结果且非超时提示——超时返回文本非空但不是执行结果，不记
+        （同参可重放）；失败（空串）不记；073 重试成功记 1 次。超时文案耦合
+        说明：以本类精确文案判定"未执行成功"，与 react.py _EMPTY_RESULT_MARKERS
+        红线文本耦合先例对齐（超时文案是存量测试红线，一字不改）。
+        """
+        if not settings.tool_idempotency_enabled or self.name not in _IDEMPOTENT_TOOLS:
+            return
+        fp_set = getattr(ctx, "executed_fingerprints", None)
+        if fp_set is None:
+            return
+        if not result or result == f"(工具 {self.name} 执行超时)":
+            return
+        fp = _fingerprint(self.name, args)
+        if fp is None:
+            return
+        fp_set.add(fp)
+
 
     def to_openai_schema(self) -> dict:
         """转成 OpenAI function calling 的 tool schema（ChatOpenAI.bind_tools 用）"""
@@ -123,16 +302,23 @@ class ToolRegistry:
         self._tools: dict[str, AgentTool] = {}
 
     def register(self, name: str, description: str, args_schema: dict,
-                 func: Callable, group: Optional[list] = None) -> "ToolRegistry":
+                 func: Callable, group: Optional[list] = None,
+                 timeout: Optional[float] = None,
+                 approval: str = "auto") -> "ToolRegistry":
         """注册一个工具（同名覆盖，便于测试替换）
 
         module-058（ADR-0012 方案 A）：group 标注阶段归属（"retrieval" /
         "generation"，双组传 ["retrieval","generation"]）；None = 未分组，
         全阶段可见（向后兼容，测试自定义工具不受影响）。
+
+        module-083：timeout / approval 透传给 AgentTool（缺省 None / "auto" →
+        15.0 秒 / 直接执行，现有 10 工具零行为变化）。
         """
         self._tools[name] = AgentTool(name, description, args_schema, func,
-                                      group=group)
+                                      group=group, timeout=timeout,
+                                      approval=approval)
         return self
+
 
     def get(self, name: str) -> Optional[AgentTool]:
         """按名字取工具，未注册返回 None"""

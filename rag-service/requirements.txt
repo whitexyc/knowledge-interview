@@ -42,6 +42,9 @@ openpyxl>=3.1.0
 # stdio + Streamable HTTP）。锁对齐已装环境 mcp 1.26.0（环境与 requirements
 # 漂移同 module-028 langchain-openai 观察；uv run mcp dev 依赖它解析）
 mcp==1.26.0
+# 工具参数 schema 校验（module-083 WP-A）：jsonschema 纯 Python 轻量、环境
+# 已装 4.26.0，锁版本对齐已装环境防漂移（同 mcp==1.26.0 先例）
+jsonschema==4.26.0
 # PDF 回退路径 Markdown 升级（module-069）：PyMuPDF 官方 MD 生成器，将 PDF
 # 回退路径输出从裸文本升级为 Markdown（标题/列表/表格恢复）。
 # AGPL-3.0 许可（与 PyMuPDF 同许可）。个人学习项目无影响；商业化时换

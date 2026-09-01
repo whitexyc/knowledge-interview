@@ -119,6 +119,31 @@ async def ensure_tool_call_logs_table() -> None:
         for stmt in statements:
             await session.execute(text(stmt))
         await session.commit()
+# approval_requests 表 DDL（module-083 WP-D 高风险审批，机制预留）：与
+# tool_call_logs 同款模式——独立建表 + 启动 init_db 自愈建表（CREATE TABLE
+# IF NOT EXISTS，幂等）。10 个内置工具 approval 全 "auto" 不触达本表；为
+# module-084 外部 MCP 工具（可能有副作用）预留人工审批工作流底座。
+APPROVAL_REQUESTS_DDL = """
+CREATE TABLE IF NOT EXISTS approval_requests (
+    id           BIGSERIAL   PRIMARY KEY,
+    tool_name    VARCHAR(64) NOT NULL,
+    args         JSONB       NOT NULL DEFAULT '{}',
+    status       VARCHAR(16) NOT NULL DEFAULT 'pending',  -- pending/approved/rejected
+    requester    VARCHAR(256) NOT NULL DEFAULT '',
+    requested_at TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    decided_at   TIMESTAMP
+);
+COMMENT ON TABLE approval_requests IS '高风险工具人工审批请求（module-083，机制预留，10 内置工具全 auto 不触达）';
+"""
+
+
+async def ensure_approval_requests_table() -> None:
+    """幂等创建 approval_requests 表（与 feedback/tool_call_logs 同款拆分执行模式）"""
+    statements = [s.strip() for s in APPROVAL_REQUESTS_DDL.split(";") if s.strip()]
+    async with async_session_factory() as session:
+        for stmt in statements:
+            await session.execute(text(stmt))
+        await session.commit()
 
 
 # verify_results 表 DDL（module-060 verify 异步化）：与 feedback/request_logs
@@ -264,6 +289,8 @@ async def init_db():
     logger.info("documents 表 original_path/doc_content_hash/duplicate_cluster_id/is_canonical 列已就绪（module-064）")
     await ensure_tool_call_logs_table()
     logger.info("tool_call_logs 表已就绪（module-066）")
+    await ensure_approval_requests_table()
+    logger.info("approval_requests 表已就绪（module-083）")
     await ensure_source_configs_table()
     logger.info("source_configs 表已就绪（module-075）")
     await ensure_review_status_column()

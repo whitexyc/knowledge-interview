@@ -80,7 +80,8 @@ class ReactContext:
         scratchpad: note_to_self 工具记录的工作笔记列表，按写入序（module-041）
         phase: 工具执行阶段（module-058 / ADR-0012 方案 A）——初始 "retrieval"；
             本轮调用过 generate_answer/verify_answer → 下一轮切 "generation"
-            （单向前进，generation 内调 re_search 不回退）
+        executed_fingerprints: 幂等指纹集合（module-083 WP-B，每请求独立、跨请求
+            不共享；同参只读检索二次调用拦截）
     """
 
     def __init__(self, query: str, identity: str = "unknown",
@@ -96,7 +97,7 @@ class ReactContext:
         self.retrieval_rounds: int = 0   # module-068: 检索阶段未切换轮次计数（防空转兜底）
         self.phase_count: dict[str, int] = {"retrieval": 0, "generation": 0}  # module-068: 各阶段实际执行工具数
         self.last_research_query: str = ""  # module-073: re_search 最近一次改写 query（同改写守卫，防 LLM 空转）
-
+        self.executed_fingerprints: set[str] = set()  # module-083（WP-B）：幂等指纹集合（每请求独立，同参只读检索二次调用拦截）
     def add_note(self, note: str) -> bool:
         """记录一条工作笔记到 scratchpad（module-041/073）
 
@@ -330,31 +331,39 @@ def _phase_allows(name: str, ctx: ReactContext) -> bool:
 
 
 async def execute_tool_with_log(name: str, args: dict, tool,
-                                ctx: ReactContext) -> str:
+                                ctx: ReactContext,
+                                allowed_tools: Optional[set[str]] = None) -> str:
     """执行单个工具并落库 tool_call_logs（module-066 / ADR-0017 决策 2）
 
     计时包住 tool.run，result_ok 语义：工具不存在/run 抛出异常才 false
     （AgentTool.run 内部捕获失败返回空串属正常路径，result_ok=true）。
-    执行层 schema 守门（2026-08-20）：工具存在但不在当前阶段允许集合 →
-    拒绝执行，返回"（工具 X 当前阶段不可用）"，result_ok=false（审计可见
-    越权尝试），喂回 LLM 判断——闭环 066 实测"执行层不校验 schema"漏洞。
+    执行层二维守门（module-083 WP-E + 066 实测补齐）：工具存在但不在当前
+    阶段允许集合（_phase_allows）或不在 Agent 权限白名单（allowed_tools）→
+    拒绝执行，返回可读提示，result_ok=false（审计可见越权尝试），喂回 LLM
+    判断——闭环 066 实测"执行层不校验 schema"漏洞。两维独立判因：阶段粒度
+    （058/ADR-0012）与 Agent 粒度（083 WP-E，None=全量放行向后兼容）。
 
     Args:
         name: 工具名
         args: 工具参数
         tool: 工具实例（tools.get 未命中为 None）
         ctx: ReAct 会话上下文
-
+        allowed_tools: Agent 权限白名单（module-083 WP-E）；None = 全量放行
     Returns:
         工具结果文本（与旧 `"" if tool is None else await tool.run(...)` 等价）
     """
     started = time.perf_counter()
     result_ok = tool is not None
     result = ""
-    if tool is not None and not _phase_allows(name, ctx):
+    if tool is not None and (not _phase_allows(name, ctx)
+                             or (allowed_tools is not None and name not in allowed_tools)):
         result_ok = False
-        result = f"（工具 {name} 当前阶段不可用，请按可用工具列表选择）"
-        logger.warning("工具 %s 被阶段守门拒绝（phase=%s）", name, ctx.phase)
+        if allowed_tools is not None and name not in allowed_tools:
+            result = f"（工具 {name} 不在当前 Agent 权限白名单，请按可用工具选择）"
+        else:
+            result = f"（工具 {name} 当前阶段不可用，请按可用工具列表选择）"
+        logger.warning("工具 %s 被权限/阶段守门拒绝（allowed=%s phase=%s）",
+                       name, allowed_tools, ctx.phase)
     elif tool is not None:
         try:
             result = await tool.run(args, ctx)
@@ -373,6 +382,7 @@ async def react_agent(
     identity: str = "unknown",
     budget: Optional[int] = None,
     tools: Optional[ToolRegistry] = None,
+    allowed_tools: Optional[set[str]] = None,
 ) -> dict:
     """ReAct 循环（非流式）：自主调用工具直到可回答或达预算上限
 
@@ -382,6 +392,8 @@ async def react_agent(
         identity: 请求身份标识（user_id 优先，否则 client_ip；记忆按身份隔离）
         budget: 工具总调用次数上限，None 用 settings.max_agent_tools
         tools: 工具注册表，默认全局 registry
+        allowed_tools: 允许执行的工具名集合（module-083 WP-E Agent 级最小权限）；
+            None = 全量放行（向后兼容）
 
     Returns:
         {"answer": str, "tool_count": int,
@@ -393,7 +405,8 @@ async def react_agent(
     tool_count = 0
     tool_trace: list[dict] = []
 
-    async for evt in react_loop(ctx, _build_messages(ctx), budget, tools):
+    async for evt in react_loop(ctx, _build_messages(ctx), budget, tools,
+                                 allowed_tools=allowed_tools):
         t = evt["type"]
         if t == "tool_call":
             tool_count = evt["tool_count"]
@@ -414,6 +427,7 @@ async def react_loop(
     messages: list,
     budget: int,
     tools: Optional[ToolRegistry] = None,
+    allowed_tools: Optional[set[str]] = None,
     max_answer_len: int = 0,
 ) -> AsyncGenerator[dict, None]:
     """ReAct 循环核心（异步生成器，逐事件产出，供 react_agent 与 SSE 端点复用）
@@ -423,6 +437,8 @@ async def react_loop(
         messages: 会话消息（system + history + 当前问题，会追加工具结果）
         budget: 工具总调用次数上限（≥0）
         tools: 工具注册表，默认全局 registry
+        allowed_tools: 允许执行的工具名集合（module-083 WP-E，None=全量放行）；
+            经 execute_tool_with_log 执行层二维守门生效
         max_answer_len: 答案最大长度（0=不限制），超出截断并附加标记
 
     Yields 事件:
@@ -505,7 +521,8 @@ async def react_loop(
                    "tool_count": tool_count}
             # module-066（ADR-0017）：执行工具并落库 tool_call_logs（计时包住
             # run；工具失败时 AgentTool.run 内部返回空结果，LLM 判断继续/放弃）
-            result = await execute_tool_with_log(name, args, tool, ctx)
+            result = await execute_tool_with_log(name, args, tool, ctx,
+                                                 allowed_tools=allowed_tools)
             executed_results.append(result)
             yield {"type": "tool_result", "name": name, "args": args,
                    "result": result, "tool_count": tool_count}
