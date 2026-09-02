@@ -54,3 +54,6 @@ pymupdf4llm
 # 支持 AsyncIOScheduler + IntervalTrigger，轻量级无重依赖。
 apscheduler==3.10.4
 
+
+# HHEM-2.1-Open ONNX 推理（2026-09-01）：FamiliarTools/HHEM-2.1-Open-onnx 导出，本地幻觉检测裁判，# 免 PyTorch/trust_remote_code；onnxruntime CPU 推理约 0.5s/批
+onnxruntime==1.29.0
